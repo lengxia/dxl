@@ -3,7 +3,7 @@
     <!-- 顶部导航 -->
     <tn-nav-bar fixed :isBack="false" :bottomShadow="false" :backgroundColor="navBackgroundColor">
       <view slot="default" class="custom-nav-content">
-        <text class="title-text">道心录</text>
+        <text class="title-text" :style="{opacity: navOpacity}">道心录</text>
       </view>
     </tn-nav-bar>
     
@@ -164,10 +164,10 @@
     name: 'Home',
     data(){
       return {
-        greeting: '道友，早安',
-        dailyQuote: '上善若水，水善利万物而不争。',
+        greeting: '道友,早安',
+        dailyQuote: '上善若水,水善利万物而不争。',
         isTodayChecked: false,
-        navOpacity: 0,
+        navOpacity: 0.6,
         userAvatar: '',
         stats: {
           days: 0,
@@ -195,11 +195,11 @@
     },
     onPageScroll(e) {
       const top = e.scrollTop
-      const threshold = 100
+      const threshold = 80
       if (top <= 0) {
-        this.navOpacity = 0
+        this.navOpacity = 0.6
       } else if (top < threshold) {
-        this.navOpacity = top / threshold
+        this.navOpacity = 0.6 + (top / threshold) * 0.4
       } else {
         this.navOpacity = 1
       }
@@ -295,10 +295,11 @@
     justify-content: center;
     
     .title-text {
-      font-size: 38rpx;
-      font-weight: bold;
+      font-size: 36rpx;
+      font-weight: 600;
       color: $text;
-      letter-spacing: 6rpx;
+      letter-spacing: 4rpx;
+      transition: opacity 0.3s ease;
     }
   }
   

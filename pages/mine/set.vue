@@ -29,7 +29,7 @@
           <view class="item-right">
             <view class="avatar-preview">
               <image 
-                src="https://resource.tuniaokj.com/images/avatar/default_avatar.jpg" 
+                :src="userAvatar || '/static/logo.png'" 
                 class="avatar-img"
                 mode="aspectFill"
               />
@@ -243,12 +243,16 @@
         phone: '',
         realname: '',
         tempRealname: '',
+        userAvatar: '',
         index: 2,
         genderArray: ['女', '男', '保密'],
         date: '2000-01-01',
         jobIndex: 0,
         jobArray: ['计算机/互联网', '教育/培训', '医疗/健康', '金融/财务', '自由职业', '其他']
       }
+    },
+    onShow() {
+      this.loadUserInfo();
     },
     computed: {
       startDate() {
@@ -294,26 +298,73 @@
         this.tempRealname = this.realname;
         this.show3 = true;
       },
-      saveNickname() {
+      async saveNickname() {
         if (this.tempNickname.trim()) {
           this.nickname = this.tempNickname.trim();
+          await this.saveUserInfo({ nickname: this.nickname });
         }
         this.show1 = false;
       },
-      saveRealname() {
+      async saveRealname() {
         if (this.tempRealname.trim()) {
           this.realname = this.tempRealname.trim();
+          await this.saveUserInfo({ realname: this.realname });
         }
         this.show3 = false;
       },
+      async loadUserInfo() {
+        const db = uniCloud.database();
+        const uid = uniCloud.getCurrentUserInfo().uid;
+        if (!uid) return;
+        
+        try {
+          const res = await db.collection('uni-id-users')
+            .where('_id == $cloudEnv_uid')
+            .field('nickname,avatar,mobile,realname,gender,birthday,job')
+            .get();
+          
+          if (res.result.data.length > 0) {
+            const u = res.result.data[0];
+            this.nickname = u.nickname || '修行者';
+            this.userAvatar = u.avatar || '';
+            this.phone = u.mobile || '';
+            this.realname = u.realname || '';
+            if (u.gender !== undefined) {
+              this.index = u.gender;
+            }
+            if (u.birthday) {
+              this.date = u.birthday;
+            }
+            if (u.job !== undefined) {
+              this.jobIndex = u.job;
+            }
+          }
+        } catch(e) {
+          console.error('加载用户信息失败', e);
+        }
+      },
+      async saveUserInfo(data) {
+        const db = uniCloud.database();
+        try {
+          await db.collection('uni-id-users')
+            .where('_id == $cloudEnv_uid')
+            .update(data);
+        } catch(e) {
+          console.error('保存失败', e);
+          uni.showToast({ title: '保存失败', icon: 'none' });
+        }
+      },
       bindPickerChange(e) {
-        this.index = e.detail.value;
+        this.index = Number(e.detail.value);
+        this.saveUserInfo({ gender: this.index });
       },
       bindJobChange(e) {
-        this.jobIndex = e.detail.value;
+        this.jobIndex = Number(e.detail.value);
+        this.saveUserInfo({ job: this.jobIndex });
       },
       bindDateChange(e) {
         this.date = e.detail.value;
+        this.saveUserInfo({ birthday: this.date });
       },
       getDate(type) {
         const date = new Date();
