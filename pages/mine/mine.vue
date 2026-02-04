@@ -105,7 +105,7 @@
             </view>
             <view class="menu-content">
               <view class="menu-title">问题反馈</view>
-              <view class="menu-desc">帮助我们做得更好</view>
+              <view class="menu-desc">帮助我们做得更好。</view>
             </view>
             <view class="menu-arrow">
               <text class="tn-icon-right"></text>
