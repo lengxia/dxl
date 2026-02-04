@@ -1,0 +1,81 @@
+{
+  "bsonType": "object",
+  "required": ["user_id", "date", "deed_type", "title", "merit_points"],
+  "permission": {
+    "read": "auth.uid == doc.user_id || doc.is_public == true",
+    "create": "auth.uid != null",
+    "update": "auth.uid == doc.user_id",
+    "delete": "auth.uid == doc.user_id"
+  },
+  "properties": {
+    "_id": {
+      "description": "ID，系统自动生成"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID",
+      "foreignKey": "uni-id-users._id"
+    },
+    "date": {
+      "bsonType": "string",
+      "description": "日期，格式：YYYY-MM-DD"
+    },
+    "deed_type": {
+      "bsonType": "string",
+      "enum": ["助人", "爱物", "环保", "孝亲", "其他"],
+      "description": "善行类型"
+    },
+    "title": {
+      "bsonType": "string",
+      "description": "善行标题"
+    },
+    "content": {
+      "bsonType": "string",
+      "description": "详细描述"
+    },
+    "intention": {
+      "bsonType": "string",
+      "description": "发心（当时心态）"
+    },
+    "feeling": {
+      "bsonType": "string",
+      "description": "回甘（做完感受）"
+    },
+    "merit_points": {
+      "bsonType": "int",
+      "minimum": 1,
+      "maximum": 10,
+      "description": "功德值（1-10分）"
+    },
+    "location": {
+      "bsonType": "string",
+      "description": "地点"
+    },
+    "images": {
+      "bsonType": "array",
+      "description": "图片列表",
+      "items": {
+        "bsonType": "string"
+      }
+    },
+    "is_public": {
+      "bsonType": "bool",
+      "description": "是否公开",
+      "defaultValue": false
+    },
+    "create_time": {
+      "bsonType": "timestamp",
+      "description": "创建时间",
+      "forceDefaultValue": {
+        "$env": "now"
+      }
+    },
+    "update_time": {
+      "bsonType": "timestamp",
+      "description": "更新时间",
+      "forceDefaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}

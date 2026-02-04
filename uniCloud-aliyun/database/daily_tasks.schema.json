@@ -1,0 +1,73 @@
+{
+  "bsonType": "object",
+  "required": ["user_id", "date"],
+  "permission": {
+    "read": "auth.uid == doc.user_id",
+    "create": "auth.uid != null",
+    "update": "auth.uid == doc.user_id",
+    "delete": "auth.uid == doc.user_id"
+  },
+  "properties": {
+    "_id": {
+      "description": "ID，系统自动生成"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID",
+      "foreignKey": "uni-id-users._id"
+    },
+    "date": {
+      "bsonType": "string",
+      "description": "日期，格式：YYYY-MM-DD"
+    },
+    "mind_check": {
+      "bsonType": "object",
+      "description": "心念检视",
+      "properties": {
+        "anxiety": { "bsonType": "bool", "description": "焦躁" },
+        "greed": { "bsonType": "bool", "description": "贪欲" },
+        "arrogance": { "bsonType": "bool", "description": "傲慢" },
+        "anger": { "bsonType": "bool", "description": "嗔怒" }
+      }
+    },
+    "body_check": {
+      "bsonType": "object",
+      "description": "身体状况",
+      "properties": {
+        "water_cups": { "bsonType": "int", "description": "饮水杯数" },
+        "stomach_status": { "bsonType": "string", "description": "胃肠状态" },
+        "exercise_minutes": { "bsonType": "int", "description": "练功时长(分)" }
+      }
+    },
+    "practice_check": {
+      "bsonType": "object",
+      "description": "经教修持",
+      "properties": {
+        "scripture_count": { "bsonType": "int", "description": "诵经遍数" },
+        "writing_words": { "bsonType": "int", "description": "抄经字数" }
+      }
+    },
+    "total_score": {
+      "bsonType": "int",
+      "description": "功过格总分"
+    },
+    "notes": {
+      "bsonType": "string",
+      "description": "今日备注"
+    },
+    "create_time": {
+      "bsonType": "timestamp",
+      "description": "创建时间",
+      "forceDefaultValue": {
+        "$env": "now"
+      }
+    },
+    "update_time": {
+      "bsonType": "timestamp",
+      "description": "更新时间",
+      "forceDefaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}

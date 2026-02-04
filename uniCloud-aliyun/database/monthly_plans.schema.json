@@ -1,0 +1,76 @@
+{
+  "bsonType": "object",
+  "required": ["user_id", "year_month", "title", "goals"],
+  "permission": {
+    "read": "auth.uid == doc.user_id",
+    "create": "auth.uid != null",
+    "update": "auth.uid == doc.user_id",
+    "delete": "auth.uid == doc.user_id"
+  },
+  "properties": {
+    "_id": {
+      "description": "ID，系统自动生成"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID，参考uni-id-users表",
+      "foreignKey": "uni-id-users._id"
+    },
+    "year_month": {
+      "bsonType": "string",
+      "description": "年月，格式：YYYY-MM"
+    },
+    "title": {
+      "bsonType": "string",
+      "description": "计划标题"
+    },
+    "goals": {
+      "bsonType": "array",
+      "description": "目标列表",
+      "items": {
+        "bsonType": "object",
+        "required": ["category", "content"],
+        "properties": {
+          "category": {
+            "bsonType": "string",
+            "enum": ["修身", "修心", "处世", "治业"],
+            "description": "分类"
+          },
+          "content": {
+            "bsonType": "string",
+            "description": "目标内容"
+          },
+          "target_days": {
+            "bsonType": "int",
+            "description": "目标天数"
+          },
+          "completed_days": {
+            "bsonType": "int",
+            "description": "已完成天数",
+            "defaultValue": 0
+          }
+        }
+      }
+    },
+    "status": {
+      "bsonType": "string",
+      "enum": ["planning", "in_progress", "completed"],
+      "defaultValue": "planning",
+      "description": "状态：planning-计划中, in_progress-进行中, completed-已完成"
+    },
+    "create_time": {
+      "bsonType": "timestamp",
+      "description": "创建时间",
+      "forceDefaultValue": {
+        "$env": "now"
+      }
+    },
+    "update_time": {
+      "bsonType": "timestamp",
+      "description": "更新时间",
+      "forceDefaultValue": {
+        "$env": "now"
+      }
+    }
+  }
+}

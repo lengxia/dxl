@@ -7,21 +7,6 @@
     </view>
     <view v-if="tabberPageLoadFlag[1]" :style="{display: currentIndex === 1 ? '' : 'none'}">
       <scroll-view class="custom-tabbar-page" scroll-y enable-back-to-top @scrolltolower="tabbarPageScrollLower">
-        <Comm ref="comm"></Comm>
-      </scroll-view>
-    </view>
-    <view v-if="tabberPageLoadFlag[2]" :style="{display: currentIndex === 2 ? '' : 'none'}">
-      <scroll-view class="custom-tabbar-page" scroll-y enable-back-to-top @scrolltolower="tabbarPageScrollLower">
-        <Discovery ref="discovery"></Discovery>
-      </scroll-view>
-    </view>
-    <view v-if="tabberPageLoadFlag[3]" :style="{display: currentIndex === 3 ? '' : 'none'}">
-      <scroll-view class="custom-tabbar-page" scroll-y enable-back-to-top @scrolltolower="tabbarPageScrollLower">
-        <Message ref="message"></Message>
-      </scroll-view>
-    </view>
-    <view v-if="tabberPageLoadFlag[4]" :style="{display: currentIndex === 4 ? '' : 'none'}">
-      <scroll-view class="custom-tabbar-page" scroll-y enable-back-to-top @scrolltolower="tabbarPageScrollLower">
         <Mine ref="mine"></Mine>
       </scroll-view>
     </view>
@@ -41,17 +26,11 @@
 
 <script>
   import Home from './home/home.vue'
-  import Comm from './comm/comm.vue'
-  import Discovery from './discovery/discovery.vue'
-  import Message from './message/message.vue'
   import Mine from './mine/mine.vue'
   
   export default {
     components: {
       Home,
-      Comm,
-      Discovery,
-      Message,
       Mine
     },
     data() {
@@ -62,26 +41,6 @@
             title: '首页',
             activeIcon: 'home-smile-fill',
             inactiveIcon: 'home-smile'
-          },
-          {
-            title: '社区',
-            activeIcon: 'topics-fill',
-            inactiveIcon: 'topics'
-          },
-          {
-            title: '发现',
-            activeIcon: 'rocket',
-            inactiveIcon: 'cube',
-            activeIconColor: '#FFFFFF',
-            inactiveIconColor: '#FFFFFF',
-            iconSize: 50,
-            out: true
-          },
-          {
-            title: '消息',
-            activeIcon: 'message-fill',
-            inactiveIcon: 'message',
-            count: 12
           },
           {
             title: '我的',
@@ -107,17 +66,10 @@
       // 切换导航
       switchTabbar(index) {
         this._switchTabbarPage(index)
-        if (index !== 1) {
-          this.$refs?.commRef?.stopAllVideo()
-        }
       },
-      
       
       // 瀑布流导航页面滚动到底部
       tabbarPageScrollLower(e) {
-        if (this.currentIndex === 2) {
-          this.$refs.discovery.getRandomData && this.$refs.discovery.getRandomData()
-        }
       },
       
       // 切换导航页面

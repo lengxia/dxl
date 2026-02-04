@@ -1,777 +1,231 @@
 <template>
   <view class="index tn-safe-area-inset-bottom">
     <!-- 顶部自定义导航 -->
-    <tn-nav-bar fixed :isBack="false" :bottomShadow="false" backgroundColor="#FFFFFF">
-      <view class="custom-nav tn-flex tn-flex-col-center tn-flex-row-left">
-        <!-- 图标logo -->
-        <view class="custom-nav__back" @click="tn('')">
-          <!-- <view class="logo-pic" style="background-image:url('https://resource.tuniaokj.com/images/simple/logo-flower.jpg')">
-            <view class="logo-image">
-            </view>
-          </view> -->
-          <view class="tn-icon-menu" style="font-size: 50rpx;"></view>
-        </view>
-        <!-- 搜索框 -->
-        <view class="custom-nav__search tn-flex tn-flex-col-center tn-flex-row-center" @click="tn('')">
-          <view class="custom-nav__search__box tn-flex tn-flex-col-center tn-flex-row-left" style="background-color: rgba(230,230,230,0.3);">
-            <view class="custom-nav__search__icon tn-icon-search tn-color-gray"></view>
-            <view class="custom-nav__search__text tn-padding-left-xs tn-color-gray">搜索 图鸟模板</view>
-          </view>
+    <tn-nav-bar fixed :isBack="false" :bottomShadow="false" :backgroundColor="navBackgroundColor">
+      <view class="custom-nav tn-flex tn-flex-col-center tn-flex-row-left" style="width: 100%; height: 100%;">
+        <view class="custom-nav__text tn-text-bold tn-text-xxl tn-color-black tn-margin-left-xl" style="padding-top: 38rpx;">
+          道心录
         </view>
       </view>
     </tn-nav-bar>
     
-    <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-top" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
-      <view class="justify-content-item tn-margin-left" @click="tn('')">
-        <view class="tn-text-bold tn-text-lg tn-padding-bottom-xs">
-          Hi 早安，抓住那只猪
-        </view>
-        <view class="tn-text-xs tn-color-cat" style="opacity: 0.5;">
-          清晨的毒鸡汤，已为你备好，趁热喝了叭
-        </view>
-      </view>
-      <view class="justify-content-item tn-color-cat tn-text-right">
-        <tn-button backgroundColor="#F1C68E00" fontColor="#838383" padding="10rpx 0" width="110rpx" shadow open-type="share">
-          <text class="tn-icon-wechat-fill tn-text-xl"></text>
-        </tn-button>
-      </view>
-    </view>
-    
-    <swiper class="card-swiper" @click="tn('')" :circular="true"
-      :autoplay="true" duration="500" interval="8000" @change="cardSwiper"> 
-      <swiper-item v-for="(item,index) in swiperList" :key="index" :class="cardCur==index?'cur':''">
-        <!-- <view class="swiper-item image-banner">
-          <image :src="item.url" mode="aspectFill" v-if="item.type=='image'"></image>
-        </view> -->
-        <view class="swiper-item image-banner" :style="'background-image:url('+ item.url + ');background-size: cover;border-radius: 15rpx;'">
-        </view>
-        <view class="swiper-item-text">
-          <view class="tn-text-bold tn-color-white" style="font-size: 50rpx;">{{item.title}}</view>
-          <view class="tn-color-white tn-padding-top" style="font-size: 30rpx;">{{item.name}}</view>
-          <view class="tn-text-sm tn-text-bold tn-color-white tn-padding-top-sm tn-padding-bottom-sm">{{item.text}}</view>
-        </view>
-      </swiper-item>
-    </swiper>
-    <view class="indication">
-        <block v-for="(item,index) in swiperList" :key="index">
-            <view class="spot" :class="cardCur==index?'active':''"></view>
-        </block>
-    </view>
-    
-    
-    <!-- 方式12 start-->
-    <!-- <view v-if="isAndroid" class="tn-flex tn-padding-xs">
-      <view class="tn-flex-1 tn-padding-sm tn-margin-xs tn-radius" @click="tn('')">
-        <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-          <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-shadow-blur tn-main-gradient-purplered--light tn-color-purplered">
-            <view class="tn-icon-fire-fill tn-three"></view>
-          </view>  
-          <view class="tn-color-black tn-text-center">
-            <text class="tn-text-ellipsis">热点资讯</text>
-          </view>
-        </view>
-      </view>
-      <view class="tn-flex-1 tn-padding-sm tn-margin-xs tn-radius" @click="tn('')">
-        <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-          <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-shadow-blur tn-main-gradient-indigo--light tn-color-indigo">
-            <view class="tn-icon-flower-fill tn-three"></view>
-          </view>  
-          <view class="tn-color-black tn-text-center">
-            <text class="tn-text-ellipsis">商品分类</text>
-          </view>
-        </view>
-      </view>
-      <view class="tn-flex-1 tn-padding-sm tn-margin-xs tn-radius" @click="tn('')">
-        <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-          <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-shadow-blur tn-main-gradient-purple--light tn-color-purple">
-            <view class="tn-icon-identity-fill tn-three"></view>
-          </view>  
-          <view class="tn-color-black tn-text-center">
-            <text class="tn-text-ellipsis">智能名片</text>
-          </view>
-        </view>
-      </view>
-      <view class="tn-flex-1 tn-padding-sm tn-margin-xs tn-radius" @click="tn('')">
-        <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-          <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-shadow-blur tn-main-gradient-orange--light tn-color-orange">
-            <view class="tn-icon-star-fill tn-three"></view>
-          </view>  
-          <view class="tn-color-black tn-text-center">
-            <text class="tn-text-ellipsis">星选门户</text>
-          </view>
-        </view>
-      </view>
-    </view> -->
-    <!-- 方式12 end-->
-    
-    <!-- 方式12 start-->
-    <!-- <view v-else class="tn-flex tn-padding-xs">
-      <view class="tn-flex-1 tn-padding-sm tn-margin-xs tn-radius" @click="tn('')">
-        <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-          <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-shadow-blur tn-main-gradient-purplered--light tn-color-purplered">
-            <view class="tn-icon-fire-fill"></view>
-          </view>  
-          <view class="tn-color-black tn-text-center">
-            <text class="tn-text-ellipsis">热点资讯</text>
-          </view>
-        </view>
-      </view>
-      <view class="tn-flex-1 tn-padding-sm tn-margin-xs tn-radius" @click="tn('')">
-        <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-          <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-shadow-blur tn-main-gradient-purple--light tn-color-purple">
-            <view class="tn-icon-identity-fill"></view>
-          </view>  
-          <view class="tn-color-black tn-text-center">
-            <text class="tn-text-ellipsis">商圈名片</text>
-          </view>
-        </view>
-      </view>
-      <view class="tn-flex-1 tn-padding-sm tn-margin-xs tn-radius" @click="tn('')">
-        <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-          <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-shadow-blur tn-main-gradient-indigo--light tn-color-indigo">
-            <view class="tn-icon-flower-fill"></view>
-          </view>  
-          <view class="tn-color-black tn-text-center">
-            <text class="tn-text-ellipsis">社区动态</text>
-          </view>
-        </view>
-      </view>
-      <view class="tn-flex-1 tn-padding-sm tn-margin-xs tn-radius" @click="tn('')">
-        <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-          <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-shadow-blur tn-main-gradient-orange--light tn-color-orange">
-            <view class="tn-icon-star-fill"></view>
-          </view>  
-          <view class="tn-color-black tn-text-center">
-            <text class="tn-text-ellipsis">关于我们</text>
-          </view>
-        </view>
-      </view>
-    </view> -->
-    <!-- 方式12 end-->
-    
-    
-    <view class="tn-padding-bottom-lg">
-      <view class="tn-flex tn-flex-row-between" @click="tn('')">
-        <view class="justify-content-item tn-margin tn-text-bold tn-text-xxl">
-          精选动态
-        </view>
-        <view class="justify-content-item tn-margin tn-text-lg tn-color-cat">
-          <text class="tn-padding-xs">全部</text>
-          <text class="tn-icon-topics"></text>
-        </view>
-      </view>
+    <view class="tn-margin-top" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
       
-      <view class="tn-flex tn-margin-left tn-margin-right tn-margin-top-sm">
-        <view class="tn-flex-2">
-          <view class="image-pic tn-margin-right" style="background-image:url('https://resource.tuniaokj.com/images/simple/image1.jpg')" @click="tn('')">
-            <view class="image-tuniao1">
-            </view>
-          </view> 
-        </view>
-        <view class="tn-flex-1">
-          <view class="image-pic" style="background-image:url('https://resource.tuniaokj.com/images/simple/image5.jpg')" @click="tn('')">
-            <view class="image-tuniao2">
-            </view>
-          </view> 
-          <view class="image-pic" style="background-image:url('https://resource.tuniaokj.com/images/simple/banner1.jpg');margin-top: 29rpx;" @click="tn('')">
-            <view class="image-tuniao2">
-            </view>
-          </view> 
-        </view>
-      </view>
-      
-      
-      <view class="tn-flex tn-flex-row-between tn-margin-top" @click="tn('')">
-        <view class="justify-content-item tn-margin tn-text-bold tn-text-xxl">
-          商圈活动
-        </view>
-        <view class="justify-content-item tn-margin tn-text-lg tn-color-cat">
-          <text class="tn-padding-xs">全部</text>
-          <text class="tn-icon-topics"></text>
-        </view>
-      </view>
-      
-      <!-- 图文 -->
-      <view class="tn-flex tn-flex-direction-column">
+      <!-- 头部 Banner与格言 -->
+      <view class="tn-margin tn-padding tn-radius" style="background: linear-gradient(135deg, #EBF4F5 0%, #F3F9F9 100%); position: relative; overflow: hidden;">
+        <!-- 装饰背景圆 -->
+        <view style="position: absolute; right: -30rpx; top: -30rpx; width: 200rpx; height: 200rpx; background: rgba(1, 190, 255, 0.1); border-radius: 50%;"></view>
         
-        <block v-for="(item,index) in content" :key="index">
-          <view class="tn-blogger-content__wrap" @click="tn('')">
-            <view class="">
-              <image 
-                class="tn-blogger-content__main-image tn-blogger-content__main-image--1 tn-margin-bottom-xs"
-                :src="item.mainImage"
-                mode="aspectFill"
-              ></image>
-            </view>
-            <view class="tn-blogger-content__label tn-text-justify">
-              <text class="tn-blogger-content__label__desc tn-text-lg tn-text-bold tn-color-cat">{{ item.desc }}</text>  
-            </view>
-            
-            <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-top-xs">
-              <view class="justify-content-item tn-flex tn-flex-col-center">
-                <view style="margin-right: 10rpx;margin-left: 0rpx;">
-                  <view class="tn-color-gray">
-                    <text class="tn-blogger-content__count-icon tn-icon-flower"></text> 
-                    <text class="tn-padding-right">{{ item.collectionCount }}</text>
-                    <text class="tn-blogger-content__count-icon tn-icon-message"></text>
-                    <text class="tn-padding-right">{{ item.commentCount }}</text>
-                    <text class="tn-blogger-content__count-icon tn-icon-like"></text>
-                    <text class="">{{ item.likeCount }}</text>
-                  </view>
-                </view>
+        <view class="tn-flex tn-flex-direction-column">
+          <view class="tn-text-xl tn-text-bold tn-color-black">
+            {{ greeting }}
+          </view>
+          <view class="tn-margin-top tn-color-gray tn-text-lg" style="font-family: 'KaiTi', serif;">
+            “{{ dailyQuote }}”
+          </view>
+        </view>
+      </view>
+
+      <!-- 修行数据概览 -->
+      <view class="tn-flex tn-flex-row-between tn-margin-left tn-margin-right tn-margin-bottom tn-bg-white tn-radius tn-shadow-sm tn-padding">
+        <view class="tn-flex-1 tn-text-center" @click="tn('/pages/daily/index')">
+          <view class="tn-text-xxl tn-text-bold tn-color-blue">{{ stats.days }}</view>
+          <view class="tn-text-xs tn-color-gray tn-margin-top-xs">修行天数</view>
+        </view>
+        <view class="tn-flex-1 tn-text-center" style="border-left: 1rpx solid #F0F0F0; border-right: 1rpx solid #F0F0F0;" @click="tn('/pages/diary/index')">
+          <view class="tn-text-xxl tn-text-bold tn-color-orange">{{ stats.merit }}</view>
+          <view class="tn-text-xs tn-color-gray tn-margin-top-xs">累计功德</view>
+        </view>
+        <view class="tn-flex-1 tn-text-center">
+          <view class="tn-text-xxl tn-text-bold tn-color-green">{{ stats.level }}</view>
+          <view class="tn-text-xs tn-color-gray tn-margin-top-xs">当前境界</view>
+        </view>
+      </view>
+
+      <!-- 核心功能入口 -->
+      <view class="tn-margin-top-lg">
+        <view class="tn-text-bold tn-text-lg tn-margin-left tn-margin-bottom-sm">修行法门</view>
+        
+        <view class="tn-flex tn-flex-wrap tn-margin-left-sm tn-margin-right-sm">
+          <!-- 每日功课 -->
+          <view class="tn-flex-1 tn-padding-sm tn-margin-xs tn-bg-white tn-radius tn-shadow-sm" @click="tn('/pages/daily/index')">
+            <view class="tn-flex tn-flex-col-center">
+              <view class="icon-circle tn-bg-blue--light tn-color-blue">
+                <view class="tn-icon-calendar-fill"></view>
               </view>
-              <view class="justify-content-item tn-text-center">
-                <view v-for="(label_item,label_index) in item.label" :key="label_index" class="tn-blogger-content__label__item tn-float-left">
-                  <text class="tn-blogger-content__label__item--prefix tn-icon-topics-fill"></text> {{ label_item }}
-                </view>
+              <view class="tn-margin-left-sm">
+                <view class="tn-text-bold">每日功课</view>
+                <view class="tn-text-xs tn-color-gray tn-margin-top-xs">日省吾身</view>
               </view>
             </view>
           </view>
           
-        </block>
-      </view>
-      
-    </view>
+          <!-- 善行日记 -->
+          <view class="tn-flex-1 tn-padding-sm tn-margin-xs tn-bg-white tn-radius tn-shadow-sm" @click="tn('/pages/diary/index')">
+            <view class="tn-flex tn-flex-col-center">
+              <view class="icon-circle tn-bg-orange--light tn-color-orange">
+                <view class="tn-icon-star-fill"></view>
+              </view>
+              <view class="tn-margin-left-sm">
+                <view class="tn-text-bold">善行日记</view>
+                <view class="tn-text-xs tn-color-gray tn-margin-top-xs">积功累德</view>
+              </view>
+            </view>
+          </view>
+        </view>
 
-    <view class='tn-tabbar-height'></view>
+        <view class="tn-flex tn-flex-wrap tn-margin-left-sm tn-margin-right-sm">
+          <!-- 月度计划 -->
+          <view class="tn-flex-1 tn-padding-sm tn-margin-xs tn-bg-white tn-radius tn-shadow-sm" @click="tn('/pages/plan/index')">
+            <view class="tn-flex tn-flex-col-center">
+              <view class="icon-circle tn-bg-purplered--light tn-color-purplered">
+                <view class="tn-icon-flag-fill"></view>
+              </view>
+              <view class="tn-margin-left-sm">
+                <view class="tn-text-bold">月度计划</view>
+                <view class="tn-text-xs tn-color-gray tn-margin-top-xs">立志笃行</view>
+              </view>
+            </view>
+          </view>
+          
+          <!-- 悟道札记 -->
+          <view class="tn-flex-1 tn-padding-sm tn-margin-xs tn-bg-white tn-radius tn-shadow-sm" @click="tn('/pages/notes/index')">
+            <view class="tn-flex tn-flex-col-center">
+              <view class="icon-circle tn-bg-indigo--light tn-color-indigo">
+                <view class="tn-icon-flower-fill"></view>
+              </view>
+              <view class="tn-margin-left-sm">
+                <view class="tn-text-bold">悟道札记</view>
+                <view class="tn-text-xs tn-color-gray tn-margin-top-xs">妙悟真心</view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 今日状态提示 -->
+      <view class="tn-margin tn-bg-blue--light tn-color-blue tn-padding tn-radius" v-if="!isTodayChecked">
+        <view class="tn-flex tn-flex-row-between tn-flex-col-center" @click="tn('/pages/daily/check')">
+          <view class="tn-flex tn-flex-col-center">
+            <view class="tn-icon-notice tn-text-xl"></view>
+            <view class="tn-margin-left-sm">今日功课尚未完成，前往打卡</view>
+          </view>
+          <view class="tn-icon-right"></view>
+        </view>
+      </view>
+
+    </view>
     
+    <view class='tn-tabbar-height'></view>
   </view>
 </template>
 
 <script>
   export default {
-    name: 'Index',
+    name: 'Home',
     data(){
       return {
-        cardCur: 0,
-        isAndroid: true,
-        swiperList: [{
-          id: 0,
-          type: 'image',
-          title: '简约商务',
-          name: '更多彩蛋等你探索',
-          url: 'https://resource.tuniaokj.com/images/simple/banner2.jpg',
-        }, {
-          id: 1,
-          type: 'image',
-          title: '合作勾搭',
-          name: '作者微信 tnkewo',
-          url: 'https://resource.tuniaokj.com/images/simple/image3.jpg',
-        }, {
-          id: 2,
-          type: 'image',
-          title: '海量分享',
-          name: '总有你想不到的创意',
-          url: 'https://resource.tuniaokj.com/images/simple/image2.jpg',
-        }, {
-          id: 3,
-          type: 'image',
-          title: '酷炫多彩',
-          name: '更多彩蛋等你探索',
-          url: 'https://resource.tuniaokj.com/images/simple/banner0.jpg',
-        }, {
-          id: 4,
-          type: 'image',
-          title: '适配多端',
-          name: 'APP、微信小程序、H5、Finclip',
-          url: 'https://resource.tuniaokj.com/images/simple/image0.jpg',
-        }],
-        content: [
-          {
-            userAvatar: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg',
-            userName: '可我会像',
-            date: '2021年12月20日',
-            label: ['开源','创意'],
-            desc: '免费开源可商用组件',
-            mainImage: 'https://resource.tuniaokj.com/images/simple/image4.jpg',
-            viewUser: {
-              latestUserAvatar: [
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg'},
-              ],
-              viewUserCount: 129
-            },
-            collectionCount: 236,
-            commentCount: 102,
-            likeCount: 168
-          },
-          {
-            userAvatar: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg',
-            userName: '可我会像',
-            date: '2021年12月20日',
-            label: ['开源','创意'],
-            desc: '2023年祝福接力',
-            mainImage: 'https://resource.tuniaokj.com/images/simple/image0.jpg',
-            viewUser: {
-              latestUserAvatar: [
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg'},
-              ],
-              viewUserCount: 129
-            },
-            collectionCount: 265,
-            commentCount: 22,
-            likeCount: 62
-          },
-          {
-            userAvatar: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg',
-            userName: '可我会像',
-            date: '2021年12月20日',
-            label: ['开源','创意'],
-            desc: '寄给十年后的自己',
-            mainImage: 'https://resource.tuniaokj.com/images/simple/image1.jpg',
-            viewUser: {
-              latestUserAvatar: [
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg'},
-              ],
-              viewUserCount: 129
-            },
-            collectionCount: 265,
-            commentCount: 22,
-            likeCount: 62
-          },
-          {
-            userAvatar: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg',
-            userName: '可我会像',
-            date: '2021年12月20日',
-            label: ['开源','创意'],
-            desc: '我们结婚了',
-            mainImage: 'https://resource.tuniaokj.com/images/simple/image2.jpg',
-            viewUser: {
-              latestUserAvatar: [
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg'},
-              ],
-              viewUserCount: 129
-            },
-            collectionCount: 265,
-            commentCount: 22,
-            likeCount: 62
-          },
-          {
-            userAvatar: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg',
-            userName: '可我会像',
-            date: '2021年12月20日',
-            label: ['开源','创意'],
-            desc: '免费开源可商用组件',
-            mainImage: 'https://resource.tuniaokj.com/images/simple/banner0.jpg',
-            viewUser: {
-              latestUserAvatar: [
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg'},
-              ],
-              viewUserCount: 129
-            },
-            collectionCount: 265,
-            commentCount: 22,
-            likeCount: 62
-          },
-          {
-            userAvatar: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg',
-            userName: '可我会像',
-            date: '2021年12月20日',
-            label: ['开源','创意'],
-            desc: '我们都是好孩子',
-            mainImage: 'https://resource.tuniaokj.com/images/simple/banner2.jpg',
-            viewUser: {
-              latestUserAvatar: [
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg'},
-              ],
-              viewUserCount: 129
-            },
-            collectionCount: 265,
-            commentCount: 22,
-            likeCount: 62
-          },
-          {
-            userAvatar: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg',
-            userName: '可我会像',
-            date: '2021年12月20日',
-            label: ['开源','创意'],
-            desc: '免费开源可商用组件',
-            mainImage: 'https://resource.tuniaokj.com/images/simple/banner1.jpg',
-            viewUser: {
-              latestUserAvatar: [
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg'},
-              ],
-              viewUserCount: 129
-            },
-            collectionCount: 265,
-            commentCount: 22,
-            likeCount: 62
-          },
-          {
-            userAvatar: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg',
-            userName: '可我会像',
-            date: '2021年12月20日',
-            label: ['开源','创意'],
-            desc: '免费开源可商用组件',
-            mainImage: 'https://resource.tuniaokj.com/images/simple/image6.jpg',
-            viewUser: {
-              latestUserAvatar: [
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg'},
-                {src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg'},
-              ],
-              viewUserCount: 129
-            },
-            collectionCount: 265,
-            commentCount: 22,
-            likeCount: 62
-          }
-        ]
+        greeting: '道友，早安',
+        dailyQuote: '上善若水，水善利万物而不争。',
+        isTodayChecked: false,
+        navOpacity: 0,
+        stats: {
+          days: 0,
+          merit: 0,
+          level: 1
+        }
+      }
+    },
+    computed: {
+      navBackgroundColor() {
+        return `rgba(255, 255, 255, ${this.navOpacity})`
+      }
+    },
+    onPageScroll(e) {
+      const top = e.scrollTop
+      const threshold = 100 // 滚动阈值，单位px
+      if (top <= 0) {
+        this.navOpacity = 0
+      } else if (top < threshold) {
+        this.navOpacity = top / threshold
+      } else {
+        this.navOpacity = 1
       }
     },
     created() {
-      const systemInfo = uni.getSystemInfoSync()
-      if (systemInfo.system.toLocaleLowerCase().includes('ios')) {
-        this.isAndroid = false
-      } else {
-        this.isAndroid = true
-      }
+      this.setGreeting();
+    },
+    onShow() {
+      this.loadData();
     },
     methods: {
-      // cardSwiper
-      cardSwiper(e) {
-        this.cardCur = e.detail.current
+      tn(url) {
+        uni.navigateTo({ url });
       },
+      setGreeting() {
+        const hour = new Date().getHours();
+        if (hour < 6) this.greeting = '夜深了，注意休息';
+        else if (hour < 9) this.greeting = '道友，早安';
+        else if (hour < 12) this.greeting = '上午好，精进修行';
+        else if (hour < 14) this.greeting = '午安，小憩养神';
+        else if (hour < 18) this.greeting = '下午好';
+        else this.greeting = '晚上好，静心反省';
+      },
+      async loadData() {
+        const db = uniCloud.database();
+        const uid = uniCloud.getCurrentUserInfo().uid;
+        if (!uid) return;
 
-      // 跳转
-      tn(e) {
-      	uni.navigateTo({
-      		url: e,
-      	});
-      },
+        // 1. 获取用户信息中的统计数据
+        try {
+           const userRes = await db.collection('uni-id-users')
+             .where('_id == $cloudEnv_uid')
+             .field('dao_profile')
+             .get();
+           
+           if(userRes.result.data.length > 0 && userRes.result.data[0].dao_profile) {
+             const p = userRes.result.data[0].dao_profile;
+             this.stats.days = p.continuous_days || 0;
+             this.stats.merit = p.total_merit || 0;
+             this.stats.level = p.level || 1;
+           }
+        } catch(e) {
+          console.error('获取用户信息失败', e);
+        }
+
+        // 2. 检查今日打卡
+        try {
+          const now = new Date();
+          const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+          const taskRes = await db.collection('daily_tasks')
+            .where(`date == "${dateStr}" && user_id == $cloudEnv_uid`)
+            .count();
+            
+          this.isTodayChecked = taskRes.result.total > 0;
+        } catch(e) {
+          console.error('检查打卡失败', e);
+        }
+      }
     }
   }
 </script>
 
 <style lang="scss" scoped>
-  .index{
-    max-height: 100vh;
+  .index {
+    min-height: 100vh;
+    background-color: #F8F8F8;
   }
-  /* 底部安全边距 start*/
   .tn-tabbar-height {
   	min-height: 120rpx;
   	height: calc(140rpx + env(safe-area-inset-bottom) / 2);
-    height: calc(140rpx + constant(safe-area-inset-bottom));
   }
-
-  /* 轮播视觉差 start */
-  .card-swiper {
-    height: 330rpx !important;
-  }
-    
-  .card-swiper swiper-item {
-    width: 750rpx !important;
-    left: 0rpx;
-    box-sizing: border-box;
-    padding: 40rpx 30rpx 30rpx 30rpx;
-    overflow: initial;
-  }
-    
-  .card-swiper swiper-item .swiper-item {
-    width: 100%;
-    display: block;
-    height: 100%;
-    border-radius: 15rpx;
-    transform: scale(1);
-    transition: all 0.2s ease-in 0s;
-    // overflow: hidden;
-  }
-    
-  .card-swiper swiper-item.cur .swiper-item {
-    transform: none;
-    transition: all 0.2s ease-in 0s;
-  }
-    
-  .card-swiper swiper-item .swiper-item-text {
-    margin-top: -160rpx;
-    text-align: center;
-    width: 100%;
-    display: block;
-    height: 50%;
-    border-radius: 10rpx;
-    transform: translate(100rpx, -60rpx) scale(0.9, 0.9);
-    transition: all 0.6s ease 0s;
-    overflow: hidden;
-  }
-    
-  .card-swiper swiper-item.cur .swiper-item-text {
-    margin-top: -220rpx;
-    width: 100%;
-    transform: translate(0rpx, 0rpx) scale(0.9, 0.9);
-    transition: all 0.6s ease 0s;
-  }
-  
-  .image-banner{
-    border: 1rpx solid #F8F7F8;
+  .icon-circle {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-  .image-banner image{
-    width: 100%;
-    height: 100%;
-  }
-  
-  /* 轮播指示点 start*/
-  .indication{
-    z-index: 9999;
-    width: 100%;
-    height: 36rpx;
-    position: absolute;
-    display:flex;
-    flex-direction:row;
-    align-items:center;
-    justify-content:center;
-  }
-  
-  .spot{
-    background-color: #FFFFFF;
-    opacity: 0.6;
-    width: 10rpx;
-    height: 10rpx;
-    border-radius: 20rpx;
-    top: -70rpx;
-    margin: 0 8rpx !important;
-    position: relative;
-  }
-  
-  .spot.active{
-    opacity: 1;
-    width: 30rpx;
-    background-color: #FFFFFF;
-  }
-  
-
-  
- /* 图标容器12 start */
- .tn-three{
-     position: absolute;
-     top: 50%;
-     right: 50%;
-     bottom: 50%;
-     left: 50%;
-     transform: translate(-38rpx, -20rpx) rotateX(20deg) rotateY(10deg) rotateZ(-20deg);
-     text-shadow: -1rpx 2rpx 0 #f0f0f0, -2rpx 4rpx 0 #f0f0f0, -10rpx 20rpx 30rpx rgba(0, 0, 0, 0.2);
- }
- .icon12 {
-   &__item {
-     width: 30%;
-     background-color: #FFFFFF;
-     border-radius: 10rpx;
-     padding: 30rpx;
-     margin: 20rpx 10rpx;
-     transform: scale(1);
-     transition: transform 0.3s linear;
-     transform-origin: center center;
-     
-     &--icon {
-       width: 100rpx;
-       height: 100rpx;
-       font-size: 60rpx;
-       border-radius: 50%;
-       margin-bottom: 18rpx;
-       position: relative;
-       z-index: 1;
-       
-       &::after {
-         content: " ";
-         position: absolute;
-         z-index: -1;
-         width: 100%;
-         height: 100%;
-         left: 0;
-         bottom: 0;
-         border-radius: inherit;
-         opacity: 1;
-         transform: scale(1, 1);
-         background-size: 100% 100%;
-         background-image: url(https://resource.tuniaokj.com/images/cool_bg_image/icon_bg6.png);
- 
-           
-       }
-     }
-   }
- }
-  
-  /* 自定义导航栏内容 start */
-  .custom-nav {
-    height: 100%;
-    
-    &__back {
-      margin: auto 5rpx;
-      font-size: 40rpx;
-      margin-right: 10rpx;
-      margin-left: 30rpx;
-      flex-basis: 5%;
-    }
-    
-    &__search {
-      flex-basis: 60%;
-      width: 100%;
-      height: 100%;
-      
-      &__box {
-        width: 100%;
-        height: 70%;
-        padding: 10rpx 0;
-        margin: 0 30rpx;
-        border-radius: 60rpx 60rpx 0 60rpx;
-        font-size: 24rpx;
-      }
-      
-      &__icon {
-        padding-right: 10rpx;
-        margin-left: 20rpx;
-        font-size: 30rpx;
-      }
-      
-      &__text {
-        // color: #AAAAAA;
-      }
-    }
-  }
-  .logo-image{
-    width: 65rpx;
-    height: 65rpx;
-    position: relative;
-    border: 1rpx solid #F8F7F8;
-    border-radius: 50%;
-  }
-  .logo-pic{
-    background-size: cover;
-    background-repeat:no-repeat;
-    // background-attachment:fixed;
-    background-position:top;
-    border-radius: 50%;
-  }
-  /* 自定义导航栏内容 end */
-  
-
-  /* 热门图片 start*/
-  .image-tuniao1{
-    padding: 165rpx 0rpx;
     font-size: 40rpx;
-    font-weight: 300;
-    position: relative;
   }
-  .image-tuniao2{
-    padding: 75rpx 0rpx;
-    font-size: 40rpx;
-    font-weight: 300;
-    position: relative;
-  }
-  .image-tuniao3{
-    padding: 90rpx 0rpx;
-    font-size: 40rpx;
-    font-weight: 300;
-    position: relative;
-  }
-  .image-pic{
-    border: 1rpx solid #F8F7F8;
-    background-size: cover;
-    background-repeat:no-repeat;
-    // background-attachment:fixed;
-    background-position:top;
-    border-radius: 10rpx;
-  }
-
-  /* 文章内容 start*/
-  .tn-blogger-content {
-    &__wrap {
-      margin: 30rpx;
-    }
-    
-    &__info {
-      &__btn {
-        margin-right: -12rpx;
-        opacity: 0.5;
-      }
-    }
-    
-    &__label {
-      &__item {
-        color: #1D2541;
-        background-color: #F3F2F7;
-        border-radius: 10rpx;
-        font-size: 22rpx;
-        
-        padding: 5rpx 15rpx;
-        margin: 5rpx 0 0 18rpx;
-        
-        &--prefix {
-          font-size: 24rpx;
-          color: #1D2541;
-          padding-right: 10rpx;
-        }
-      }
-      
-      &__desc {
-        line-height: 55rpx;
-      }
-    }
-    
-    &__main-image {
-      border: 1rpx solid #F8F7F8;
-      border-radius: 16rpx;
-      
-      &--1 {
-        max-width: 690rpx;
-        min-width: 690rpx;
-        max-height: 400rpx;
-        min-height: 400rpx;
-      }
-      
-      &--2 {
-        max-width: 260rpx;
-        max-height: 260rpx;
-      }
-      
-      &--3 {
-        height: 212rpx;
-        width: 100%;
-      }
-    }
-    
-    &__count-icon {
-      font-size: 40rpx;
-      padding-right: 5rpx;
-    }
-  }
-  
-  .image-wallpaper{
-    padding: 160rpx 0rpx;
-    font-size: 40rpx;
-    font-weight: 300;
-    position: relative;
-  }
-  .image-pic{
-    background-size: cover;
-    background-repeat:no-repeat;
-    // background-attachment:fixed;
-    background-position:top;
-    border-radius: 10rpx;
-  }
-  /* 文章内容 end*/
-  
 </style>
