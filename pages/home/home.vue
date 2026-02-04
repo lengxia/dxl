@@ -3,7 +3,7 @@
     <!-- 顶部导航 -->
     <tn-nav-bar fixed :isBack="false" :bottomShadow="false" :backgroundColor="navBackgroundColor">
       <view slot="default" class="custom-nav-content">
-        <text class="title-text">道心录</text>
+        <text class="title-text" :style="{'--title-opacity': navOpacity}">道心录</text>
       </view>
     </tn-nav-bar>
     
@@ -295,10 +295,12 @@
     justify-content: center;
     
     .title-text {
-      font-size: 38rpx;
-      font-weight: bold;
+      font-size: 36rpx;
+      font-weight: 600;
       color: $text;
-      letter-spacing: 6rpx;
+      letter-spacing: 4rpx;
+      opacity: var(--title-opacity, 0);
+      transition: opacity 0.3s ease;
     }
   }
   
