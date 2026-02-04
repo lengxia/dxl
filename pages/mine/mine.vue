@@ -1,99 +1,123 @@
 <template>
-  <view class="mine tn-safe-area-inset-bottom">
+  <view class="mine-page tn-safe-area-inset-bottom">
 
     <!-- 顶部自定义导航 -->
-    <tn-nav-bar :isBack="false" :bottomShadow="false" backgroundColor="none">
-      <view class="custom-nav tn-flex tn-flex-col-center tn-flex-row-left" @click="tn('/pages/mine/set')">
-        <view class="custom-nav__back">
-          <view class="tn-icon-set tn-color-cat" style="font-size: 50rpx;"></view>
+    <tn-nav-bar :isBack="false" :bottomShadow="false" backgroundColor="transparent">
+      <view class="custom-nav" @click="tn('/pages/mine/set')">
+        <view class="nav-icon">
+          <text class="tn-icon-set" style="font-size: 44rpx; color: #FFFFFF;"></text>
         </view>
       </view>
     </tn-nav-bar>
     
-    <view class="top-backgroup">
-      <image src='https://resource.tuniaokj.com/images/my/my-bg4.png' mode='widthFix' class='backgroud-image'></image>
+    <!-- 顶部背景 -->
+    <view class="header-bg">
+      <view class="header-pattern"></view>
     </view>
     
-    <view class="about__wrap" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
-      <!-- 用户信息 -->
-      <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-bottom" style="margin-top: -450rpx;">
-        <view class="justify-content-item">
-          <view class="tn-flex tn-flex-col-center tn-flex-row-left">
-            <view class="logo-pic tn-shadow">
-              <view class="logo-image">
-                <view class="tn-shadow-blur" :style="'background-image:url(' + (userInfo.avatar || 'https://resource.tuniaokj.com/images/avatar/default_avatar.jpg') + ');width: 110rpx;height: 110rpx;background-size: cover;'">
-                </view>
-              </view>
-            </view>
-            <view class="tn-padding-right">
-              <view class="tn-padding-right tn-padding-left-sm">
-                <text class="tn-color-cat tn-text-xl tn-text-bold">{{ userInfo.nickname || '各位道友' }}</text>
-              </view>
-              <view class="tn-padding-right tn-padding-top-xs tn-padding-left-sm tn-text-ellipsis">
-                <text class="tn-color-gray">潜心修行，福慧双增</text>
-              </view>
-            </view>
-          </view>
-        </view>
-        <view class="justify-content-item" @click="tn('/pages/mine/set')">
-          <view class="tn-icon-right tn-color-gray"></view>
-        </view>
-      </view>
+    <view class="page-content" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
       
-      <!-- 修行概览卡片 -->
-      <view class="tn-margin-top-xl">
-        <view class="button-vip tn-flex tn-flex-row-between tn-flex-col-center tn-shadow-blur" style="background: linear-gradient(-120deg, #3E445A, #31374A, #2B3042, #262B3C);">
-          <view class="tn-margin-left">
-            <view class='title' style="color: #F1C68E;">
-              <text class="tn-text-bold tn-text-xl">{{ stats.merit }} 功德</text>
+      <!-- 用户信息卡片 -->
+      <view class="user-section">
+        <view class="user-card">
+          <view class="avatar-wrapper">
+            <view class="avatar-ring">
+              <image 
+                :src="userInfo.avatar || 'https://resource.tuniaokj.com/images/avatar/default_avatar.jpg'" 
+                class="avatar-image"
+                mode="aspectFill"
+              />
             </view>
-            <view class='tn-color-white tn-text-sm tn-padding-top-sm'>当前境界：{{ stats.level_name || '初入道门' }}</view>
+            <view class="level-badge">Lv.{{ stats.level }}</view>
           </view>
-          <view class="tn-margin-right">
-            <tn-button shape="round" backgroundColor="#F1C68E" fontColor="#634738" padding="10rpx 0" width="160rpx" shadow @click="tn('/pages/daily/index')">
-              <text class="tn-text-bold">去修持</text>
-            </tn-button>
+          
+          <view class="user-info">
+            <view class="user-name">{{ userInfo.nickname || '修行者' }}</view>
+            <view class="user-motto">潜心修行，福慧双增</view>
+          </view>
+          
+          <view class="edit-btn" @click="tn('/pages/mine/set')">
+            <text class="tn-icon-right"></text>
           </view>
         </view>
       </view>
       
-      <!-- 常用功能菜单 -->
-      <view class="about-shadow tn-margin-top-lg tn-margin-bottom-lg tn-padding-top-sm tn-padding-bottom-sm tn-bg-white">
-        
-        <!-- 系统设置 -->
-        <tn-list-cell :hover="true" :unlined="true" :radius="true" :fontSize="30" @click="tn('/pages/mine/set')">
-          <view class="tn-flex tn-flex-col-center">
-            <view class="icon1__item--icon tn-flex tn-flex-row-center tn-flex-col-center" style="color: #7C8191;">
-              <view class="tn-icon-set-fill"></view>
+      <!-- 修行概览 -->
+      <view class="merit-section">
+        <view class="merit-card">
+          <view class="merit-header">
+            <view class="merit-icon">
+              <text class="tn-icon-diamond"></text>
             </view>
-            <view class="tn-margin-left-sm tn-flex-1">系统设置</view>
-            <view class="tn-color-gray tn-icon-right"></view>
+            <view class="merit-info">
+              <view class="merit-label">累计功德</view>
+              <view class="merit-value">{{ stats.merit }}</view>
+            </view>
           </view>
-        </tn-list-cell>
+          <view class="merit-footer">
+            <view class="level-name">{{ stats.level_name }}</view>
+            <view class="practice-btn" @click="tn('/pages/daily/index')">
+              <text>去修持</text>
+              <text class="tn-icon-right" style="margin-left: 8rpx; font-size: 24rpx;"></text>
+            </view>
+          </view>
+          <view class="merit-decoration"></view>
+        </view>
+      </view>
+      
+      <!-- 功能菜单 -->
+      <view class="menu-section">
+        <view class="menu-card">
+          
+          <view class="menu-item" @click="tn('/pages/mine/set')">
+            <view class="menu-icon" style="background: linear-gradient(135deg, #3D8B8F, #5AABAD);">
+              <text class="tn-icon-set-fill"></text>
+            </view>
+            <view class="menu-content">
+              <view class="menu-title">系统设置</view>
+              <view class="menu-desc">个人资料、账号管理</view>
+            </view>
+            <view class="menu-arrow">
+              <text class="tn-icon-right"></text>
+            </view>
+          </view>
+          
+          <view class="menu-divider"></view>
 
-        <!-- 关于道心录 -->
-        <tn-list-cell :hover="true" :unlined="true" :radius="true" :fontSize="30" @click="tn('/pages/mine/about')">
-          <view class="tn-flex tn-flex-col-center">
-            <view class="icon1__item--icon tn-flex tn-flex-row-center tn-flex-col-center" style="color: #7C8191;">
-              <view class="tn-icon-moon-fill"></view>
+          <view class="menu-item" @click="tn('/pages/mine/about')">
+            <view class="menu-icon" style="background: linear-gradient(135deg, #C9A86C, #D4B87A);">
+              <text class="tn-icon-flower-fill"></text>
             </view>
-            <view class="tn-margin-left-sm tn-flex-1">关于道心录</view>
-            <view class="tn-color-gray tn-icon-right"></view>
+            <view class="menu-content">
+              <view class="menu-title">关于道心录</view>
+              <view class="menu-desc">了解我们的初心</view>
+            </view>
+            <view class="menu-arrow">
+              <text class="tn-icon-right"></text>
+            </view>
           </view>
-        </tn-list-cell>
-        
-        <!-- 问题反馈 -->
-        <tn-list-cell :hover="true" :unlined="true" :radius="true" :fontSize="30">
-          <button class="tn-flex tn-flex-col-center tn-button--clear-style" open-type="feedback">
-            <view class="icon1__item--icon tn-flex tn-flex-row-center tn-flex-col-center" style="color: #7C8191;">
-              <view class="tn-icon-message-fill"></view>
+          
+          <view class="menu-divider"></view>
+          
+          <button class="menu-item btn-reset" open-type="feedback">
+            <view class="menu-icon" style="background: linear-gradient(135deg, #E07A5F, #F09A7F);">
+              <text class="tn-icon-message-fill"></text>
             </view>
-            <view class="tn-flex tn-flex-row-between" style="width: 100%;">
-              <view class="tn-margin-left-sm">问题反馈</view>
-              <view class="tn-color-gray tn-icon-right"></view>
+            <view class="menu-content">
+              <view class="menu-title">问题反馈</view>
+              <view class="menu-desc">帮助我们做得更好</view>
+            </view>
+            <view class="menu-arrow">
+              <text class="tn-icon-right"></text>
             </view>
           </button>
-        </tn-list-cell>
+          
+        </view>
+      </view>
+
+      <!-- 底部心语 -->
+      <view class="footer-section">
+        <view class="footer-text">道不远人，勤修不辍</view>
       </view>
 
     </view>
@@ -114,6 +138,7 @@
         },
         stats: {
           merit: 0,
+          level: 1,
           level_name: '初入道门'
         }
       }
@@ -128,7 +153,6 @@
         });
       },
       async loadUserInfo() {
-        // 获取用户信息和统计数据
         const db = uniCloud.database();
         const uid = uniCloud.getCurrentUserInfo().uid;
         if (!uid) return;
@@ -146,9 +170,10 @@
              
              if(u.dao_profile) {
                this.stats.merit = u.dao_profile.total_merit || 0;
-               // 简单根据积分判断境界（实际逻辑可封装）
                const level = u.dao_profile.level || 1;
-               this.stats.level_name = `第${level}重境界`;
+               this.stats.level = level;
+               const levelNames = ['初入道门', '筑基初成', '开光境界', '融合之境', '心动大成', '金丹圆满'];
+               this.stats.level_name = levelNames[Math.min(level - 1, levelNames.length - 1)] || '初入道门';
              }
            }
         } catch(e) {
@@ -160,131 +185,323 @@
 </script>
 
 <style lang="scss" scoped>
-  .mine{
-    max-height: 100vh;
-  }
-  /* 底部安全边距 start*/
-  .tn-tabbar-height {
-  	min-height: 120rpx;
-  	height: calc(140rpx + env(safe-area-inset-bottom) / 2);
-    height: calc(140rpx + constant(safe-area-inset-bottom));
+  // 道心录配色
+  $primary: #3D8B8F;
+  $primary-light: #5AABAD;
+  $primary-dark: #2A6366;
+  $accent: #C9A86C;
+  $accent-light: #E8D4A8;
+  $warm: #E07A5F;
+  $bg: #F7F5F0;
+  $card-bg: #FFFEFB;
+  $text: #2D3436;
+  $text-secondary: #636E72;
+  $text-hint: #B2BEC3;
+
+  .mine-page {
+    min-height: 100vh;
+    background-color: $bg;
   }
   
-  .tn-color-cat{
-    color: #1D2541;
+  .tn-tabbar-height {
+    min-height: 120rpx;
+    height: calc(140rpx + env(safe-area-inset-bottom) / 2);
+  }
+  
+  .custom-nav {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 30rpx;
+    padding-top: 38rpx;
+  }
+  
+  .nav-icon {
+    width: 70rpx;
+    height: 70rpx;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  /* 自定义导航栏内容 start */
-  .custom-nav {
-    height: 100%;
-    &__back {
-      margin: auto 5rpx;
-      font-size: 40rpx;
-      margin-right: 10rpx;
-      flex-basis: 5%;
-      width: 100rpx;
+  // 顶部背景
+  .header-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 450rpx;
+    background: linear-gradient(180deg, $primary 0%, $primary-light 100%);
+    overflow: hidden;
+    
+    .header-pattern {
       position: absolute;
+      top: -100rpx;
+      right: -100rpx;
+      width: 400rpx;
+      height: 400rpx;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
     }
   }
-
-  /* 用户头像 start */
-  .logo-image {
-    width: 110rpx;
-    height: 110rpx;
-    position: relative;
-    overflow: hidden;
-    border-radius: 50%;
-  }
-
-  .logo-pic {
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-position: top;
-    border: 8rpx solid rgba(255,255,255,0.05);
-    box-shadow: 0rpx 0rpx 80rpx 0rpx rgba(0, 0, 0, 0.15);
-    border-radius: 50%;
-    overflow: hidden;
-  }
-
-  /* 页面 start*/
-  .about-shadow {
-    border-radius: 15rpx;
-    box-shadow: 0rpx 0rpx 50rpx 0rpx rgba(0, 0, 0, 0.07);
-  }
-
-  .about__wrap {
+  
+  .page-content {
     position: relative;
     z-index: 1;
-    margin: 20rpx 30rpx;
+    padding: 0 30rpx;
+  }
+
+  // 用户信息区
+  .user-section {
+    padding-top: 40rpx;
+    margin-bottom: 30rpx;
   }
   
-  .button-vip {
-    width: 100%;
-    height: 150rpx;
-    border-radius: 15rpx;
+  .user-card {
+    background: $card-bg;
+    border-radius: 28rpx;
+    padding: 40rpx;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 10rpx 50rpx rgba(0, 0, 0, 0.1);
+  }
+  
+  .avatar-wrapper {
     position: relative;
-    z-index: 1;
+    margin-right: 30rpx;
+  }
+  
+  .avatar-ring {
+    width: 130rpx;
+    height: 130rpx;
+    border-radius: 50%;
+    padding: 6rpx;
+    background: linear-gradient(135deg, $primary, $accent);
     
-    &::after {
-      content: " ";
-      position: absolute;
-      z-index: -1;
+    .avatar-image {
       width: 100%;
       height: 100%;
-      left: 0;
-      bottom: 0;
-      border-radius: inherit;
-      opacity: 1;
-      transform: scale(1, 1);
-      background-size: 100% 100%;
-      background-image: url(https://resource.tuniaokj.com/images/cool_bg_image/icon_bg.png);
-    }    
-  }
-  
-  /* 图标容器1 start */
-  .icon1 {
-    &__item {
-      background-color: #FFFFFF;
-      border-radius: 10rpx;
-      padding: 30rpx;
-      margin: 20rpx 10rpx;
-      transform: scale(1);
-      transition: transform 0.3s linear;
-      transform-origin: center center;
-  
-      &--icon {
-        width: 40rpx;
-        height: 40rpx;
-        font-size: 40rpx;
-        border-radius: 50%;
-        position: relative;
-        z-index: 1;
-  
-        &::after {
-          content: " ";
-          position: absolute;
-          z-index: -1;
-          width: 100%;
-          height: 100%;
-          left: 0;
-          bottom: 0;
-          border-radius: inherit;
-          opacity: 1;
-          transform: scale(1, 1);
-          background-size: 100% 100%;
-          background-image: url(https://resource.tuniaokj.com/images/cool_bg_image/icon_bg.png);
-        }
-      }
+      border-radius: 50%;
+      border: 4rpx solid $card-bg;
     }
   }
   
-  /* 顶部背景图 start */
-  .top-backgroup {
-    height: 450rpx;
-    z-index: -1;
-    .backgroud-image {
-      width: 100%;
-      height: 450rpx;
+  .level-badge {
+    position: absolute;
+    bottom: -10rpx;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, $accent, #D4B87A);
+    color: #FFFFFF;
+    font-size: 20rpx;
+    font-weight: bold;
+    padding: 4rpx 16rpx;
+    border-radius: 20rpx;
+    box-shadow: 0 4rpx 10rpx rgba(201, 168, 108, 0.4);
+  }
+  
+  .user-info {
+    flex: 1;
+    
+    .user-name {
+      font-size: 38rpx;
+      font-weight: bold;
+      color: $text;
+      margin-bottom: 10rpx;
     }
+    
+    .user-motto {
+      font-size: 26rpx;
+      color: $text-hint;
+    }
+  }
+  
+  .edit-btn {
+    width: 60rpx;
+    height: 60rpx;
+    background: $bg;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    text {
+      color: $text-hint;
+      font-size: 28rpx;
+    }
+  }
+
+  // 功德卡片
+  .merit-section {
+    margin-bottom: 30rpx;
+  }
+  
+  .merit-card {
+    background: linear-gradient(135deg, #2D3436 0%, #434A4D 100%);
+    border-radius: 24rpx;
+    padding: 36rpx;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10rpx 40rpx rgba(0, 0, 0, 0.15);
+  }
+  
+  .merit-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 24rpx;
+  }
+  
+  .merit-icon {
+    width: 80rpx;
+    height: 80rpx;
+    background: linear-gradient(135deg, $accent, #D4B87A);
+    border-radius: 20rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 24rpx;
+    
+    text {
+      color: #FFFFFF;
+      font-size: 40rpx;
+    }
+  }
+  
+  .merit-info {
+    .merit-label {
+      font-size: 24rpx;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 6rpx;
+    }
+    .merit-value {
+      font-size: 52rpx;
+      font-weight: bold;
+      color: $accent;
+    }
+  }
+  
+  .merit-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .level-name {
+    font-size: 26rpx;
+    color: rgba(255, 255, 255, 0.8);
+    padding: 8rpx 24rpx;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 30rpx;
+  }
+  
+  .practice-btn {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, $accent, #D4B87A);
+    color: #2D3436;
+    font-size: 26rpx;
+    font-weight: bold;
+    padding: 16rpx 36rpx;
+    border-radius: 30rpx;
+    box-shadow: 0 6rpx 20rpx rgba(201, 168, 108, 0.4);
+  }
+  
+  .merit-decoration {
+    position: absolute;
+    top: -60rpx;
+    right: -60rpx;
+    width: 200rpx;
+    height: 200rpx;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 50%;
+  }
+
+  // 菜单区域
+  .menu-section {
+    margin-bottom: 40rpx;
+  }
+  
+  .menu-card {
+    background: $card-bg;
+    border-radius: 24rpx;
+    padding: 10rpx 0;
+    box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+  }
+  
+  .menu-item {
+    display: flex;
+    align-items: center;
+    padding: 30rpx;
+  }
+  
+  .btn-reset {
+    width: 100%;
+    background: transparent;
+    border: none;
+    text-align: left;
+    
+    &::after {
+      border: none;
+    }
+  }
+  
+  .menu-icon {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 20rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 24rpx;
+    
+    text {
+      color: #FFFFFF;
+      font-size: 38rpx;
+    }
+  }
+  
+  .menu-content {
+    flex: 1;
+    
+    .menu-title {
+      font-size: 30rpx;
+      font-weight: 500;
+      color: $text;
+      margin-bottom: 6rpx;
+    }
+    
+    .menu-desc {
+      font-size: 24rpx;
+      color: $text-hint;
+    }
+  }
+  
+  .menu-arrow {
+    text {
+      color: $text-hint;
+      font-size: 28rpx;
+    }
+  }
+  
+  .menu-divider {
+    height: 1rpx;
+    background: #F0F0F0;
+    margin: 0 30rpx;
+  }
+
+  // 底部
+  .footer-section {
+    text-align: center;
+    padding: 40rpx 0;
+  }
+  
+  .footer-text {
+    font-size: 24rpx;
+    color: $text-hint;
+    letter-spacing: 4rpx;
   }
 </style>

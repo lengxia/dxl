@@ -5,17 +5,30 @@
 // 组件配置
 $tn-form-item-height: 70rpx;
 
+// ========== 道心录定制主题 ==========
+// 主色调：禅意青绿+古铜金
+$dxl-primary: #3D8B8F;        // 青绿主色
+$dxl-primary-light: #5AABAD;  // 浅青绿
+$dxl-primary-dark: #2A6366;   // 深青绿
+$dxl-accent: #C9A86C;         // 古铜金强调色
+$dxl-accent-light: #E8D4A8;   // 浅金色
+$dxl-warm: #E07A5F;           // 暖红点缀
+$dxl-bg: #F7F5F0;             // 米白背景
+$dxl-card-bg: #FFFEFB;        // 卡片背景
+$dxl-text: #2D3436;           // 主文字色
+$dxl-text-secondary: #636E72; // 次级文字
+$dxl-text-hint: #B2BEC3;      // 提示文字
 
 // 主颜色
-$tn-main-color: #01BEFF;
-$tn-main-orange: #FBBD12;
-$tn-embellished-green: #00FFC6;
-$tn-embellished-yellow: #FFF00D;
-$tn-auxiliary-powder: #FF71D2;
-$tn-auxiliary-blue: #82B2FF;
-$tn-bg-color: #FFFFFF;
-$tn-bg-gray-color: #F4F4F4;
-$tn-space-color: #F8F7F8;
+$tn-main-color: #3D8B8F;
+$tn-main-orange: #C9A86C;
+$tn-embellished-green: #5AABAD;
+$tn-embellished-yellow: #E8D4A8;
+$tn-auxiliary-powder: #E07A5F;
+$tn-auxiliary-blue: #5AABAD;
+$tn-bg-color: #FFFEFB;
+$tn-bg-gray-color: #F7F5F0;
+$tn-space-color: #F7F5F0;
 
 // 边框颜色
 $tn-border-solid-color: rgba(0, 0, 0, 0.1);

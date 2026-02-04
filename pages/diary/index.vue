@@ -1,57 +1,93 @@
 <template>
-  <view class="dxl-diary-index tn-safe-area-inset-bottom">
-    <tn-nav-bar :isBack="true" backTitle="返回" fixed customBack backgroundColor="#FFFFFF" :bottomShadow="false">
-      <view slot="back" class="tn-custom-nav-bar__back" @click="goBack">
-        <text class="tn-icon-left tn-color-black"></text>
-        <text class="tn-margin-left-xs tn-color-black">返回</text>
+  <view class="diary-page tn-safe-area-inset-bottom">
+    <tn-nav-bar :isBack="true" backTitle="" fixed customBack :backgroundColor="navBgColor" :bottomShadow="false">
+      <view slot="back" class="nav-back" @click="goBack">
+        <view class="back-btn">
+          <text class="tn-icon-left" :style="{color: navTextColor}"></text>
+        </view>
       </view>
-      <view class="tn-custom-nav-bar__title tn-color-black">善行日记</view>
+      <view class="nav-title" :style="{color: navTextColor}">善行日记</view>
     </tn-nav-bar>
 
-    <view class="tn-margin-top-xl" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
-      <!-- 统计概览 -->
-      <view class="tn-flex tn-flex-row-between tn-padding tn-bg-white tn-margin-bottom-sm">
-        <view>
-          <view class="tn-text-bold tn-text-lg">本月善行</view>
-          <view class="tn-text-sm tn-color-gray tn-margin-top-xs">{{ currentMonth }}月累计</view>
+    <view class="page-wrapper">
+      <!-- 顶部背景 -->
+      <view class="header-bg"></view>
+      
+      <view class="page-content" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
+        
+        <!-- 统计概览卡片 -->
+        <view class="stats-card">
+          <view class="stats-icon">
+            <text class="tn-icon-star-fill"></text>
+          </view>
+          <view class="stats-info">
+            <view class="stats-row">
+              <view class="stats-item">
+                <view class="stats-value">{{ totalMerit }}</view>
+                <view class="stats-label">功德分</view>
+              </view>
+              <view class="stats-divider"></view>
+              <view class="stats-item">
+                <view class="stats-value">{{ totalCount }}</view>
+                <view class="stats-label">件善事</view>
+              </view>
+            </view>
+            <view class="stats-period">{{ currentMonth }}月累计</view>
+          </view>
         </view>
-        <view class="tn-text-right">
-          <view class="tn-text-xl tn-text-bold tn-color-orange">{{ totalMerit }} <text class="tn-text-sm tn-color-gray">分</text></view>
-          <view class="tn-text-sm tn-color-gray tn-margin-top-xs">{{ totalCount }} 件善事</view>
-        </view>
-      </view>
 
-      <!-- 列表 -->
-      <view class="tn-padding-sm">
-        <view v-if="diaries.length > 0">
-           <view v-for="(item, index) in diaries" :key="index" class="tn-bg-white tn-radius tn-shadow-sm tn-margin-bottom-sm tn-padding" @click="goDetail(item._id)">
-             <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-               <view class="tn-flex tn-flex-col-center">
-                 <tn-tag :backgroundColor="typeColor(item.deed_type)" fontColor="#FFF" size="sm" shape="radius" class="tn-margin-right-sm">{{ item.deed_type }}</tn-tag>
-                 <text class="tn-text-bold">{{ item.title }}</text>
-               </view>
-               <view class="tn-text-xs tn-color-gray">{{ item.date }}</view>
-             </view>
-             
-             <view class="tn-margin-top-sm tn-text-ellipsis-2 tn-color-black">
-               {{ item.content }}
-             </view>
-             
-             <view class="tn-margin-top-sm tn-flex tn-flex-row-between tn-text-xs tn-color-gray">
-               <view>发心：{{ item.intention || '无' }}</view>
-               <view class="tn-color-orange">+{{ item.merit_points }} 功德</view>
-             </view>
-           </view>
+        <!-- 列表区域 -->
+        <view class="list-section">
+          <view class="section-header">
+            <view class="section-title">善行记录</view>
+          </view>
+          
+          <view v-if="diaries.length > 0" class="diary-list">
+            <view 
+              v-for="(item, index) in diaries" 
+              :key="index" 
+              class="diary-card"
+              @click="goDetail(item._id)"
+            >
+              <view class="diary-header">
+                <view class="diary-type" :style="{background: typeGradient(item.deed_type)}">
+                  {{ item.deed_type }}
+                </view>
+                <view class="diary-date">{{ item.date }}</view>
+              </view>
+              
+              <view class="diary-title">{{ item.title }}</view>
+              
+              <view class="diary-content">{{ item.content }}</view>
+              
+              <view class="diary-footer">
+                <view class="diary-intention" v-if="item.intention">
+                  <text class="tn-icon-heart"></text>
+                  <text>{{ item.intention }}</text>
+                </view>
+                <view class="diary-merit">
+                  <text class="tn-icon-diamond"></text>
+                  <text>+{{ item.merit_points }}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+          
+          <view v-else class="empty-state">
+            <view class="empty-icon">
+              <text class="tn-icon-star"></text>
+            </view>
+            <view class="empty-text">勿以善小而不为</view>
+            <view class="empty-hint">点击下方按钮记录第一件善事</view>
+          </view>
         </view>
-        <tn-empty v-else mode="data" text="勿以善小而不为"></tn-empty>
+
       </view>
     </view>
 
     <!-- 悬浮按钮 -->
-    <view class="tn-fab-class">
-      <tn-button backgroundColor="#FF7043" fontColor="#FFFFFF" shape="circle" shadow width="100rpx" height="100rpx" @click="goCreate">
-        <text class="tn-icon-star tn-text-xxl"></text>
-      </tn-button>
+    <view class="fab-btn" @click="goCreate">
+      <text class="tn-icon-add"></text>
     </view>
   </view>
 </template>
@@ -63,8 +99,20 @@
         currentMonth: new Date().getMonth() + 1,
         diaries: [],
         totalMerit: 0,
-        totalCount: 0
+        totalCount: 0,
+        scrollTop: 0
       }
+    },
+    computed: {
+      navBgColor() {
+        return this.scrollTop > 50 ? '#FFFEFB' : 'transparent';
+      },
+      navTextColor() {
+        return this.scrollTop > 50 ? '#2D3436' : '#FFFFFF';
+      }
+    },
+    onPageScroll(e) {
+      this.scrollTop = e.scrollTop;
     },
     onShow() {
       this.loadData();
@@ -85,12 +133,8 @@
       },
       async loadData() {
         const db = uniCloud.database();
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        startOfMonth.setHours(0,0,0,0);
         
         try {
-          // 获取所有记录（按日期倒序）
           const res = await db.collection('good_deeds')
             .where('user_id == $cloudEnv_uid')
             .orderBy('date', 'desc')
@@ -98,8 +142,6 @@
           
           this.diaries = res.result.data;
           
-          // 简单统计本月（实际建议后端聚合，或者这里前端过滤）
-          // 由于日期格式是 YYYY-MM-DD
           const monthPrefix = `${new Date().getFullYear()}-${String(this.currentMonth).padStart(2,'0')}`;
           
           let m = 0;
@@ -117,40 +159,325 @@
           console.error(e);
         }
       },
-      typeColor(type) {
+      typeGradient(type) {
         const map = {
-          '助人': '#FF7043',
-          '爱物': '#66BB6A',
-          '环保': '#26A69A',
-          '孝亲': '#AB47BC',
-          '其他': '#78909C'
+          '助人': 'linear-gradient(135deg, #E07A5F, #F09A7F)',
+          '爱物': 'linear-gradient(135deg, #3D8B8F, #5AABAD)',
+          '环保': 'linear-gradient(135deg, #26A69A, #4DB6AC)',
+          '孝亲': 'linear-gradient(135deg, #7B68EE, #9B8AFF)',
+          '其他': 'linear-gradient(135deg, #78909C, #90A4AE)'
         };
-        return map[type] || '#78909C';
+        return map[type] || map['其他'];
       }
     }
   }
 </script>
 
 <style lang="scss" scoped>
-  .dxl-diary-index {
+  // 道心录配色
+  $primary: #3D8B8F;
+  $primary-light: #5AABAD;
+  $accent: #C9A86C;
+  $accent-light: #E8D4A8;
+  $warm: #E07A5F;
+  $bg: #F7F5F0;
+  $card-bg: #FFFEFB;
+  $text: #2D3436;
+  $text-secondary: #636E72;
+  $text-hint: #B2BEC3;
+
+  .diary-page {
     min-height: 100vh;
-    background-color: #F8F8F8;
+    background-color: $bg;
   }
-  .tn-fab-class {
-    position: fixed;
-    bottom: 50rpx;
-    right: 30rpx;
-    z-index: 99;
-  }
-  .tn-custom-nav-bar__back {
-    width: 100%;
-    height: 100%;
-    position: relative;
+  
+  .nav-back {
     display: flex;
-    justify-content: flex-start;
     align-items: center;
+    height: 100%;
+    padding-left: 20rpx;
+    
+    .back-btn {
+      width: 60rpx;
+      height: 60rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      text {
+        font-size: 36rpx;
+      }
+    }
+  }
+  
+  .nav-title {
+    font-size: 34rpx;
+    font-weight: bold;
+  }
+  
+  .page-wrapper {
+    position: relative;
+  }
+  
+  .header-bg {
     position: absolute;
     top: 0;
     left: 0;
+    right: 0;
+    height: 350rpx;
+    background: linear-gradient(180deg, $accent 0%, #D4B87A 100%);
+    border-radius: 0 0 60rpx 60rpx;
+  }
+  
+  .page-content {
+    position: relative;
+    z-index: 1;
+    padding: 30rpx;
+    padding-bottom: 150rpx;
+  }
+
+  // 统计卡片
+  .stats-card {
+    background: $card-bg;
+    border-radius: 28rpx;
+    padding: 36rpx;
+    display: flex;
+    align-items: center;
+    margin-bottom: 30rpx;
+    box-shadow: 0 10rpx 50rpx rgba(0, 0, 0, 0.1);
+  }
+  
+  .stats-icon {
+    width: 100rpx;
+    height: 100rpx;
+    background: linear-gradient(135deg, $accent, #D4B87A);
+    border-radius: 28rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 30rpx;
+    box-shadow: 0 8rpx 24rpx rgba(201, 168, 108, 0.3);
+    
+    text {
+      font-size: 48rpx;
+      color: #FFFFFF;
+    }
+  }
+  
+  .stats-info {
+    flex: 1;
+  }
+  
+  .stats-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10rpx;
+  }
+  
+  .stats-item {
+    .stats-value {
+      font-size: 44rpx;
+      font-weight: bold;
+      color: $text;
+    }
+    
+    .stats-label {
+      font-size: 22rpx;
+      color: $text-hint;
+    }
+  }
+  
+  .stats-divider {
+    width: 1rpx;
+    height: 50rpx;
+    background: #EEEEEE;
+    margin: 0 40rpx;
+  }
+  
+  .stats-period {
+    font-size: 24rpx;
+    color: $accent;
+    font-weight: 500;
+  }
+
+  // 列表区域
+  .list-section {
+    margin-bottom: 30rpx;
+  }
+  
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20rpx;
+    
+    .section-title {
+      font-size: 30rpx;
+      font-weight: bold;
+      color: $text;
+      position: relative;
+      padding-left: 20rpx;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6rpx;
+        height: 28rpx;
+        background: $accent;
+        border-radius: 3rpx;
+      }
+    }
+  }
+  
+  .diary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20rpx;
+  }
+  
+  .diary-card {
+    background: $card-bg;
+    border-radius: 20rpx;
+    padding: 30rpx;
+    box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+    transition: all 0.2s ease;
+    
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+  
+  .diary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16rpx;
+  }
+  
+  .diary-type {
+    font-size: 22rpx;
+    color: #FFFFFF;
+    padding: 6rpx 18rpx;
+    border-radius: 20rpx;
+    font-weight: 500;
+  }
+  
+  .diary-date {
+    font-size: 24rpx;
+    color: $text-hint;
+  }
+  
+  .diary-title {
+    font-size: 32rpx;
+    font-weight: bold;
+    color: $text;
+    margin-bottom: 12rpx;
+  }
+  
+  .diary-content {
+    font-size: 28rpx;
+    color: $text-secondary;
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    margin-bottom: 20rpx;
+  }
+  
+  .diary-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16rpx;
+    border-top: 1rpx solid #F5F5F5;
+  }
+  
+  .diary-intention {
+    display: flex;
+    align-items: center;
+    font-size: 24rpx;
+    color: $text-hint;
+    
+    text:first-child {
+      margin-right: 8rpx;
+      color: $warm;
+    }
+  }
+  
+  .diary-merit {
+    display: flex;
+    align-items: center;
+    font-size: 26rpx;
+    font-weight: bold;
+    color: $accent;
+    
+    text:first-child {
+      margin-right: 6rpx;
+    }
+  }
+
+  // 空状态
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 80rpx 0;
+    
+    .empty-icon {
+      width: 140rpx;
+      height: 140rpx;
+      background: linear-gradient(135deg, $accent-light, $accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 30rpx;
+      
+      text {
+        font-size: 70rpx;
+        color: #FFFFFF;
+      }
+    }
+    
+    .empty-text {
+      font-size: 34rpx;
+      font-weight: bold;
+      color: $text;
+      margin-bottom: 10rpx;
+    }
+    
+    .empty-hint {
+      font-size: 26rpx;
+      color: $text-hint;
+    }
+  }
+
+  // 悬浮按钮
+  .fab-btn {
+    position: fixed;
+    bottom: 100rpx;
+    right: 40rpx;
+    width: 110rpx;
+    height: 110rpx;
+    background: linear-gradient(135deg, $accent, #D4B87A);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10rpx 40rpx rgba(201, 168, 108, 0.4);
+    z-index: 99;
+    
+    text {
+      font-size: 48rpx;
+      color: #FFFFFF;
+    }
+    
+    &:active {
+      transform: scale(0.95);
+    }
   }
 </style>

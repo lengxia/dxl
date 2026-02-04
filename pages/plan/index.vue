@@ -1,63 +1,98 @@
 <template>
-  <view class="dxl-plan-index tn-safe-area-inset-bottom">
+  <view class="plan-page tn-safe-area-inset-bottom">
     <!-- 顶部导航栏 -->
-    <tn-nav-bar :isBack="true" backTitle="返回" fixed customBack backgroundColor="#FFFFFF" :bottomShadow="false">
-      <view slot="back" class="tn-custom-nav-bar__back" @click="goBack">
-        <text class="tn-icon-left tn-color-black"></text>
-        <text class="tn-margin-left-xs tn-color-black">返回</text>
+    <tn-nav-bar :isBack="true" backTitle="" fixed customBack :backgroundColor="navBgColor" :bottomShadow="false">
+      <view slot="back" class="nav-back" @click="goBack">
+        <view class="back-btn">
+          <text class="tn-icon-left" :style="{color: navTextColor}"></text>
+        </view>
       </view>
-      <view class="tn-custom-nav-bar__title tn-color-black">月度计划</view>
+      <view class="nav-title" :style="{color: navTextColor}">月度计划</view>
     </tn-nav-bar>
 
-    <view class="tn-margin-top-xl" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
-      <!-- 月份切换与统计 -->
-      <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-padding">
-        <view class="tn-flex tn-flex-col-center" @click="showCalendar = true">
-          <text class="tn-text-xl tn-text-bold">{{ currentYear }}年{{ currentMonth }}月</text>
-          <text class="tn-icon-down tn-margin-left-xs"></text>
+    <view class="page-wrapper">
+      <!-- 顶部背景 -->
+      <view class="header-bg"></view>
+      
+      <view class="page-content" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
+        
+        <!-- 月份选择与进度 -->
+        <view class="month-card">
+          <view class="month-selector" @click="showCalendar = true">
+            <view class="month-text">{{ currentYear }}年{{ currentMonth }}月</view>
+            <text class="tn-icon-down"></text>
+          </view>
+          <view class="progress-info">
+            <view class="progress-circle">
+              <view class="progress-value">{{ progress }}%</view>
+            </view>
+            <view class="progress-label">总进度</view>
+          </view>
         </view>
-        <view class="tn-text-sm tn-color-gray">
-          总进度 {{ progress }}%
-        </view>
-      </view>
 
-      <!-- 计划列表 -->
-      <view class="tn-padding-left tn-padding-right tn-padding-bottom">
-        <block v-if="plans.length > 0">
-          <view v-for="(item, index) in plans" :key="index" class="tn-margin-bottom tn-bg-white tn-radius tn-shadow-sm" @click="goDetail(item._id)">
-            <view class="tn-padding">
-              <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-                <view class="tn-text-lg tn-text-bold">{{ item.title }}</view>
-                <tn-tag :backgroundColor="statusColor(item.status)" shape="circle" size="sm">{{ statusText(item.status) }}</tn-tag>
+        <!-- 计划列表 -->
+        <view class="list-section">
+          <view class="section-header">
+            <view class="section-title">计划列表</view>
+            <view class="plan-count">{{ plans.length }} 项</view>
+          </view>
+          
+          <view v-if="plans.length > 0" class="plan-list">
+            <view 
+              v-for="(item, index) in plans" 
+              :key="index" 
+              class="plan-card"
+              @click="goDetail(item._id)"
+            >
+              <view class="plan-header">
+                <view class="plan-title">{{ item.title }}</view>
+                <view class="plan-status" :class="item.status">
+                  {{ statusText(item.status) }}
+                </view>
               </view>
-              <view class="tn-margin-top-sm tn-color-gray tn-text-sm tn-text-ellipsis-2">
+              
+              <view class="plan-goals">
                 {{ getGoalsSummary(item.goals) }}
               </view>
               
-              <!-- 分类进度条 -->
-              <view class="tn-margin-top">
-                <view class="tn-flex tn-flex-row-between tn-text-xs tn-color-gray tn-margin-bottom-xs">
-                  <text>完成度</text>
-                  <text>{{ calculateProgress(item.goals) }}%</text>
+              <view class="plan-progress">
+                <view class="progress-bar">
+                  <view 
+                    class="progress-fill" 
+                    :style="{width: calculateProgress(item.goals) + '%'}"
+                  ></view>
                 </view>
-                <tn-line-progress :percent="calculateProgress(item.goals)" :showPercent="false" :round="true" activeColor="#01BEFF"></tn-line-progress>
+                <view class="progress-text">{{ calculateProgress(item.goals) }}%</view>
               </view>
             </view>
           </view>
-        </block>
-        <tn-empty v-else mode="data" text="本月暂无计划"></tn-empty>
+          
+          <view v-else class="empty-state">
+            <view class="empty-icon">
+              <text class="tn-icon-flag"></text>
+            </view>
+            <view class="empty-text">本月暂无计划</view>
+            <view class="empty-hint">制定计划，开启修行之旅</view>
+          </view>
+        </view>
+
       </view>
     </view>
 
     <!-- 悬浮按钮 -->
-    <view class="tn-fab-class">
-      <tn-button backgroundColor="#01BEFF" fontColor="#FFFFFF" shape="circle" shadow width="100rpx" height="100rpx" @click="goCreate">
-        <text class="tn-icon-add tn-text-xxl"></text>
-      </tn-button>
+    <view class="fab-btn" @click="goCreate">
+      <text class="tn-icon-add"></text>
     </view>
     
     <!-- 日历弹窗 -->
-    <tn-calendar v-model="showCalendar" mode="date" :changeYear="true" :changeMonth="true" @change="onDateChange"></tn-calendar>
+    <tn-calendar 
+      v-model="showCalendar" 
+      mode="date"
+      :changeYear="true" 
+      :changeMonth="true"
+      activeBgColor="#E07A5F" 
+      @change="onDateChange"
+    ></tn-calendar>
   </view>
 </template>
 
@@ -69,8 +104,20 @@
         currentYear: new Date().getFullYear(),
         currentMonth: new Date().getMonth() + 1,
         plans: [],
-        progress: 0
+        progress: 0,
+        scrollTop: 0
       }
+    },
+    computed: {
+      navBgColor() {
+        return this.scrollTop > 50 ? '#FFFEFB' : 'transparent';
+      },
+      navTextColor() {
+        return this.scrollTop > 50 ? '#2D3436' : '#FFFFFF';
+      }
+    },
+    onPageScroll(e) {
+      this.scrollTop = e.scrollTop;
     },
     onShow() {
       this.loadPlans();
@@ -108,16 +155,7 @@
           this.calculateTotalProgress();
         } catch (e) {
           console.error(e);
-          // 这里可以加上 uni.showToast
         }
-      },
-      statusColor(status) {
-        const map = {
-          planning: '#E6E6E6',
-          in_progress: '#01BEFF',
-          completed: '#00D65F'
-        };
-        return map[status] || '#E6E6E6';
       },
       statusText(status) {
         const map = {
@@ -129,7 +167,7 @@
       },
       getGoalsSummary(goals) {
         if (!goals || goals.length === 0) return '暂无目标';
-        return goals.map(g => `[${g.category}] ${g.content}`).join('；');
+        return goals.map(g => `[${g.category}] ${g.content}`).slice(0, 2).join('；');
       },
       calculateProgress(goals) {
         if (!goals || goals.length === 0) return 0;
@@ -157,25 +195,315 @@
 </script>
 
 <style lang="scss" scoped>
-  .dxl-plan-index {
+  // 道心录配色
+  $primary: #3D8B8F;
+  $primary-light: #5AABAD;
+  $accent: #C9A86C;
+  $warm: #E07A5F;
+  $warm-light: #F09A7F;
+  $bg: #F7F5F0;
+  $card-bg: #FFFEFB;
+  $text: #2D3436;
+  $text-secondary: #636E72;
+  $text-hint: #B2BEC3;
+
+  .plan-page {
     min-height: 100vh;
-    background-color: #F8F8F8;
+    background-color: $bg;
   }
-  .tn-fab-class {
-    position: fixed;
-    bottom: 50rpx;
-    right: 30rpx;
-    z-index: 99;
-  }
-  .tn-custom-nav-bar__back {
-    width: 100%;
-    height: 100%;
-    position: relative;
+  
+  .nav-back {
     display: flex;
-    justify-content: flex-start;
     align-items: center;
+    height: 100%;
+    padding-left: 20rpx;
+    
+    .back-btn {
+      width: 60rpx;
+      height: 60rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      text {
+        font-size: 36rpx;
+      }
+    }
+  }
+  
+  .nav-title {
+    font-size: 34rpx;
+    font-weight: bold;
+  }
+  
+  .page-wrapper {
+    position: relative;
+  }
+  
+  .header-bg {
     position: absolute;
     top: 0;
     left: 0;
+    right: 0;
+    height: 350rpx;
+    background: linear-gradient(180deg, $warm 0%, $warm-light 100%);
+    border-radius: 0 0 60rpx 60rpx;
+  }
+  
+  .page-content {
+    position: relative;
+    z-index: 1;
+    padding: 30rpx;
+    padding-bottom: 150rpx;
+  }
+
+  // 月份卡片
+  .month-card {
+    background: $card-bg;
+    border-radius: 28rpx;
+    padding: 36rpx;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30rpx;
+    box-shadow: 0 10rpx 50rpx rgba(0, 0, 0, 0.1);
+  }
+  
+  .month-selector {
+    display: flex;
+    align-items: center;
+    
+    .month-text {
+      font-size: 38rpx;
+      font-weight: bold;
+      color: $text;
+      margin-right: 10rpx;
+    }
+    
+    text {
+      font-size: 28rpx;
+      color: $text-hint;
+    }
+  }
+  
+  .progress-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .progress-circle {
+    width: 100rpx;
+    height: 100rpx;
+    background: linear-gradient(135deg, $warm, $warm-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8rpx;
+    box-shadow: 0 6rpx 20rpx rgba(224, 122, 95, 0.3);
+    
+    .progress-value {
+      font-size: 30rpx;
+      font-weight: bold;
+      color: #FFFFFF;
+    }
+  }
+  
+  .progress-label {
+    font-size: 22rpx;
+    color: $text-hint;
+  }
+
+  // 列表区域
+  .list-section {
+    margin-bottom: 30rpx;
+  }
+  
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20rpx;
+    
+    .section-title {
+      font-size: 30rpx;
+      font-weight: bold;
+      color: $text;
+      position: relative;
+      padding-left: 20rpx;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6rpx;
+        height: 28rpx;
+        background: $warm;
+        border-radius: 3rpx;
+      }
+    }
+    
+    .plan-count {
+      font-size: 24rpx;
+      color: $text-hint;
+    }
+  }
+  
+  .plan-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20rpx;
+  }
+  
+  .plan-card {
+    background: $card-bg;
+    border-radius: 20rpx;
+    padding: 30rpx;
+    box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+    transition: all 0.2s ease;
+    
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+  
+  .plan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16rpx;
+  }
+  
+  .plan-title {
+    font-size: 32rpx;
+    font-weight: bold;
+    color: $text;
+    flex: 1;
+    margin-right: 20rpx;
+  }
+  
+  .plan-status {
+    font-size: 22rpx;
+    padding: 6rpx 18rpx;
+    border-radius: 20rpx;
+    
+    &.planning {
+      background: #F5F5F5;
+      color: $text-hint;
+    }
+    
+    &.in_progress {
+      background: #E3F2FD;
+      color: #1976D2;
+    }
+    
+    &.completed {
+      background: #E8F5E9;
+      color: #2E7D32;
+    }
+  }
+  
+  .plan-goals {
+    font-size: 26rpx;
+    color: $text-secondary;
+    line-height: 1.6;
+    margin-bottom: 20rpx;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+  
+  .plan-progress {
+    display: flex;
+    align-items: center;
+  }
+  
+  .progress-bar {
+    flex: 1;
+    height: 12rpx;
+    background: #F0F0F0;
+    border-radius: 6rpx;
+    overflow: hidden;
+    margin-right: 20rpx;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, $warm, $warm-light);
+    border-radius: 6rpx;
+    transition: width 0.3s ease;
+  }
+  
+  .progress-text {
+    font-size: 26rpx;
+    font-weight: bold;
+    color: $warm;
+    width: 80rpx;
+    text-align: right;
+  }
+
+  // 空状态
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 80rpx 0;
+    
+    .empty-icon {
+      width: 140rpx;
+      height: 140rpx;
+      background: linear-gradient(135deg, $warm-light, $warm);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 30rpx;
+      
+      text {
+        font-size: 70rpx;
+        color: #FFFFFF;
+      }
+    }
+    
+    .empty-text {
+      font-size: 34rpx;
+      font-weight: bold;
+      color: $text;
+      margin-bottom: 10rpx;
+    }
+    
+    .empty-hint {
+      font-size: 26rpx;
+      color: $text-hint;
+    }
+  }
+
+  // 悬浮按钮
+  .fab-btn {
+    position: fixed;
+    bottom: 100rpx;
+    right: 40rpx;
+    width: 110rpx;
+    height: 110rpx;
+    background: linear-gradient(135deg, $warm, $warm-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10rpx 40rpx rgba(224, 122, 95, 0.4);
+    z-index: 99;
+    
+    text {
+      font-size: 48rpx;
+      color: #FFFFFF;
+    }
+    
+    &:active {
+      transform: scale(0.95);
+    }
   }
 </style>
