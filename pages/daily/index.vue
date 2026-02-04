@@ -320,6 +320,7 @@
 
   // 日历区域
   .calendar-section {
+    margin-top: 10rpx;
     margin-bottom: 30rpx;
   }
   
@@ -327,12 +328,14 @@
     display: flex;
     align-items: center;
     margin-bottom: 24rpx;
+    padding-top: 10rpx;
     
     .section-title {
       font-size: 32rpx;
       font-weight: bold;
       color: $text;
       margin-right: 20rpx;
+      line-height: 1;
     }
     
     &::after {

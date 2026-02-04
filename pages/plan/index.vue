@@ -317,6 +317,7 @@
 
   // 列表区域
   .list-section {
+    margin-top: 10rpx;
     margin-bottom: 30rpx;
   }
   
@@ -324,12 +325,14 @@
     display: flex;
     align-items: center;
     margin-bottom: 24rpx;
+    padding-top: 10rpx;
     
     .section-title {
       font-size: 32rpx;
       font-weight: bold;
       color: $text;
       margin-right: 20rpx;
+      line-height: 1;
     }
     
     &::after {
@@ -343,6 +346,7 @@
       font-size: 24rpx;
       color: $text-hint;
       margin-left: 20rpx;
+      line-height: 1;
     }
   }
   
