@@ -2,10 +2,8 @@
   <view class="home-page tn-safe-area-inset-bottom">
     <!-- 顶部导航 -->
     <tn-nav-bar fixed :isBack="false" :bottomShadow="false" :backgroundColor="navBackgroundColor">
-      <view class="custom-nav" style="width: 100%; height: 100%; display: flex; align-items: center; padding-left: 30rpx;">
-        <view class="nav-title" style="padding-top: 38rpx;">
-          <text class="title-text">道心录</text>
-        </view>
+      <view slot="default" class="custom-nav-content">
+        <text class="title-text">道心录</text>
       </view>
     </tn-nav-bar>
     
@@ -289,12 +287,18 @@
     height: calc(140rpx + env(safe-area-inset-bottom) / 2);
   }
   
-  .custom-nav {
+  .custom-nav-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
     .title-text {
-      font-size: 40rpx;
+      font-size: 38rpx;
       font-weight: bold;
       color: $text;
-      letter-spacing: 4rpx;
+      letter-spacing: 6rpx;
     }
   }
   
@@ -306,7 +310,8 @@
   .greeting-section {
     position: relative;
     padding: 30rpx;
-    margin-bottom: 30rpx;
+    padding-top: 20rpx;
+    margin-bottom: 20rpx;
   }
   
   .greeting-bg {
@@ -314,9 +319,9 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 300rpx;
-    background: linear-gradient(135deg, $primary 0%, $primary-light 100%);
-    border-radius: 0 0 60rpx 60rpx;
+    height: 340rpx;
+    background: linear-gradient(160deg, $primary 0%, $primary-light 100%);
+    border-radius: 0 0 50rpx 50rpx;
   }
   
   .greeting-content {

@@ -1,43 +1,70 @@
 <template>
-  <view class="template-avatar tn-safe-area-inset-bottom">
-    
-    <!-- 顶部自定义导航 -->
-    <tn-nav-bar fixed customBack backgroundColor="#FFFFFF" :bottomShadow="false">
-      <view slot="back" class='tn-custom-nav-bar__back'
-        @click="goBack">
-        <text class='icon tn-icon-left-arrow tn-color-black'></text>
+  <view class="avatar-page">
+    <!-- 顶部导航 -->
+    <tn-nav-bar fixed customBack backgroundColor="transparent" :bottomShadow="false">
+      <view slot="back" class="nav-back" @click="goBack">
+        <view class="back-btn">
+          <text class="tn-icon-left"></text>
+        </view>
       </view>
-      <!-- <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
-        <text class="tn-text-bold tn-text-xl tn-color-black">上传头像</text>
-      </view> -->
+      <view class="nav-title">上传头像</view>
+      <view slot="right" class="nav-right" @click="saveAvatar" v-if="cropperImageUrl">
+        <text>保存</text>
+      </view>
     </tn-nav-bar>
     
-    <view :style="{paddingTop: vuex_custom_bar_height + 'px'}">
-      <!-- <view class="cropper-options">
-        <view class="cropper-options__item" @tap="chooseImage">选择图片</view>
-        <view class="cropper-options__item" @tap="switchBorderRect">{{ switchText }}</view>
-      </view> -->
-      <view class="tn-button-up">
-        <view class="tn-button-up__item" @tap="chooseImage">选择图片</view>
+    <view class="page-content" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
+      <!-- 选择图片按钮 -->
+      <view class="action-bar">
+        <view class="action-btn" @click="chooseImage">
+          <text class="tn-icon-image"></text>
+          <text>选择图片</text>
+        </view>
+        <view class="action-btn secondary" @click="switchBorderRect" v-if="imageUrl">
+          <text class="tn-icon-refresh"></text>
+          <text>{{ isRound ? '方形裁剪' : '圆形裁剪' }}</text>
+        </view>
       </view>
       
+      <!-- 提示文字 -->
+      <view class="tips" v-if="!imageUrl">
+        <view class="tips-icon">
+          <text class="tn-icon-camera"></text>
+        </view>
+        <text class="tips-text">点击上方按钮选择一张图片</text>
+        <text class="tips-hint">支持从相册选择或拍照</text>
+      </view>
     </view>
     
+    <!-- 裁剪组件 -->
     <tn-cropper
       :imageUrl="imageUrl"
       :isRound="isRound"
       @cropper="cropperFinish"
     ></tn-cropper>
     
+    <!-- 预览弹窗 -->
     <tn-popup
       v-model="showCropperImage"
       :marginTop="vuex_custom_bar_height"
       length="80%"
       mode="center"
       :closeBtn="true"
+      :maskClosable="true"
     >
-      <view class="tn-flex tn-flex-col-center tn-flex-row-center" style="margin: 40rpx 60rpx;">
-        <image :src="cropperImageUrl" style="width: 80%;" mode="widthFix"></image>
+      <view class="preview-popup">
+        <view class="preview-title">预览效果</view>
+        <view class="preview-image-box">
+          <image :src="cropperImageUrl" class="preview-image" :class="isRound ? 'round' : ''" mode="aspectFit"></image>
+        </view>
+        <view class="preview-actions">
+          <view class="preview-btn cancel" @click="showCropperImage = false">
+            <text>重新裁剪</text>
+          </view>
+          <view class="preview-btn confirm" @click="confirmUpload">
+            <text>确认上传</text>
+          </view>
+        </view>
       </view>
     </tn-popup>
   </view>
@@ -45,12 +72,11 @@
 
 <script>
   export default {
-    name: 'TemplateAvatar',
+    name: 'AvatarUpload',
     data() {
       return {
         imageUrl: '',
         isRound: true,
-        switchText: '切换为正方形裁剪框',
         showCropperImage: false,
         cropperImageUrl: ''
       }
@@ -59,7 +85,6 @@
       this.updateCustomBarInfo()
     },
     methods: {
-      // 点击左上角返回按钮时触发事件
       goBack() {
         const pages = getCurrentPages()
         if (pages && pages.length > 0) {
@@ -79,7 +104,6 @@
           })
         }
       },
-      // 更新顶部导航栏信息
       async updateCustomBarInfo() {
         let customBarHeight = this.vuex_custom_bar_height
         let statusBarHeight = this.vuex_status_bar_height
@@ -98,28 +122,20 @@
         this.$t.vuex('vuex_status_bar_height', statusBarHeight)
         this.$t.vuex('vuex_custom_bar_height', customBarHeight)
       },
-      // 选择图片
       chooseImage() {
         uni.chooseImage({
           count: 1,
           sizeType: ['original', 'compressed'],
-          sourceType: ['album','camera'],
+          sourceType: ['album', 'camera'],
           success: (res) => {
             const tempFilePaths = res.tempFilePaths[0]
             this.imageUrl = tempFilePaths
           }
         })
       },
-      // 切换裁剪框形状
       switchBorderRect() {
         this.isRound = !this.isRound
-        if (this.isRound) {
-          this.switchText = '切换为正方形裁剪框'
-        } else {
-          this.switchText = '切换为圆形裁剪框'
-        }
       },
-      // 裁剪完成
       cropperFinish(res) {
         this.showCropperImage = true
         if (res.url) {
@@ -128,71 +144,247 @@
         if (res.base64) {
           this.cropperImageUrl = `${res.base64}`
         }
+      },
+      saveAvatar() {
+        if (this.cropperImageUrl) {
+          this.showCropperImage = true
+        }
+      },
+      async confirmUpload() {
+        if (!this.cropperImageUrl) return;
+        
+        uni.showLoading({ title: '上传中' });
+        
+        try {
+          // 将base64转为临时文件再上传
+          const filePath = this.cropperImageUrl;
+          
+          // 上传到云存储
+          const uploadRes = await uniCloud.uploadFile({
+            filePath: filePath,
+            cloudPath: `avatars/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.png`
+          });
+          
+          const avatarUrl = uploadRes.fileID;
+          
+          // 更新用户头像
+          const db = uniCloud.database();
+          await db.collection('uni-id-users')
+            .where('_id == $cloudEnv_uid')
+            .update({
+              avatar: avatarUrl
+            });
+          
+          uni.hideLoading();
+          uni.showToast({ title: '上传成功', icon: 'success' });
+          
+          // 更新本地缓存的用户信息
+          setTimeout(() => {
+            uni.navigateBack();
+          }, 1500);
+          
+        } catch (e) {
+          uni.hideLoading();
+          uni.showToast({ title: '上传失败', icon: 'none' });
+          console.error(e);
+        }
       }
     }
   }
 </script>
 
 <style lang="scss" scoped>
-  .template-avatar{
-    background-color: #FFFFFF;
+  $primary: #3D8B8F;
+  $accent: #C9A86C;
+  $warm: #E07A5F;
+  $bg: #1a1a1a;
+  $card-bg: #FFFEFB;
+  $text: #FFFFFF;
+  $text-secondary: rgba(255, 255, 255, 0.7);
+  $text-hint: rgba(255, 255, 255, 0.5);
+
+  .avatar-page {
+    min-height: 100vh;
+    background-color: $bg;
   }
-  /* 胶囊*/
-  .tn-custom-nav-bar__back {
-    width: 60%;
+
+  .nav-back {
+    display: flex;
+    align-items: center;
     height: 100%;
-    position: relative;
-    display: flex;
-    justify-content: space-evenly;
-    align-items: center;
-    box-sizing: border-box;
-    background-color: transparent;
-    border-radius: 1000rpx;
-    border: 1rpx solid transparent;
-    font-size: 18px;
     
-    .icon {
-      display: block;
-      flex: 1;
-      margin: auto;
-      text-align: center;
-    }
-    
-  }
-  .cropper-options {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    margin-top: 90rpx;
-    
-    &__item {
-      color: #FFFFFF;
-      font-size: 28rpx;
-      padding: 18rpx 56rpx;
-      border: 2rpx solid #FFFFFF;
-      z-index: 1000;
+    .back-btn {
+      width: 64rpx;
+      height: 64rpx;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       
-      &:nth-child(1) {
-        border-right: none;
+      text {
+        color: $text;
+        font-size: 32rpx;
       }
     }
   }
-  
-  .tn-button-up {
+
+  .nav-title {
+    color: $text;
+    font-size: 34rpx;
+    font-weight: bold;
+    letter-spacing: 2rpx;
+  }
+
+  .nav-right {
+    padding: 12rpx 24rpx;
+    background: $accent;
+    border-radius: 30rpx;
+    
+    text {
+      color: #FFFFFF;
+      font-size: 28rpx;
+      font-weight: 500;
+    }
+  }
+
+  .page-content {
+    position: relative;
+    z-index: 100;
+  }
+
+  .action-bar {
+    display: flex;
+    justify-content: center;
+    gap: 30rpx;
+    padding: 40rpx 30rpx;
+  }
+
+  .action-btn {
+    display: flex;
+    align-items: center;
+    padding: 20rpx 36rpx;
+    background: $accent;
+    border-radius: 40rpx;
+    
+    text {
+      color: #FFFFFF;
+      font-size: 28rpx;
+      
+      &:first-child {
+        margin-right: 10rpx;
+        font-size: 32rpx;
+      }
+    }
+    
+    &.secondary {
+      background: rgba(255, 255, 255, 0.15);
+      border: 2rpx solid rgba(255, 255, 255, 0.3);
+    }
+    
+    &:active {
+      opacity: 0.9;
+      transform: scale(0.98);
+    }
+  }
+
+  .tips {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 100rpx 30rpx;
+  }
+
+  .tips-icon {
+    width: 120rpx;
+    height: 120rpx;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
-    margin-top: 90rpx;
+    margin-bottom: 30rpx;
     
-    &__item {
-      color: #FFFFFF;
-      font-size: 28rpx;
-      padding: 18rpx 56rpx;
-      border: 2rpx solid #FFFFFF;
-      z-index: 1000;
+    text {
+      font-size: 56rpx;
+      color: $text-hint;
+    }
+  }
+
+  .tips-text {
+    font-size: 30rpx;
+    color: $text-secondary;
+    margin-bottom: 12rpx;
+  }
+
+  .tips-hint {
+    font-size: 26rpx;
+    color: $text-hint;
+  }
+
+  // 预览弹窗
+  .preview-popup {
+    padding: 40rpx;
+  }
+
+  .preview-title {
+    text-align: center;
+    font-size: 34rpx;
+    font-weight: bold;
+    color: #2D3436;
+    margin-bottom: 40rpx;
+  }
+
+  .preview-image-box {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 40rpx;
+  }
+
+  .preview-image {
+    width: 300rpx;
+    height: 300rpx;
+    border: 4rpx solid #F0F0F0;
+    
+    &.round {
+      border-radius: 50%;
+    }
+  }
+
+  .preview-actions {
+    display: flex;
+    gap: 24rpx;
+  }
+
+  .preview-btn {
+    flex: 1;
+    padding: 28rpx;
+    border-radius: 50rpx;
+    text-align: center;
+    
+    text {
+      font-size: 30rpx;
+      font-weight: 500;
     }
     
+    &.cancel {
+      background: #F5F5F5;
+      
+      text {
+        color: #666666;
+      }
+    }
+    
+    &.confirm {
+      background: linear-gradient(135deg, $accent, #D4B87A);
+      
+      text {
+        color: #FFFFFF;
+      }
+    }
+    
+    &:active {
+      opacity: 0.9;
+    }
   }
 </style>

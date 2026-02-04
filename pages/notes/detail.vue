@@ -1,47 +1,85 @@
 <template>
-  <view class="dxl-note-detail tn-safe-area-inset-bottom">
-    <tn-nav-bar :isBack="true" backTitle="返回" fixed customBack backgroundColor="#FFFFFF" :bottomShadow="false">
-      <view slot="back" class="tn-custom-nav-bar__back" @click="goBack">
-        <text class="tn-icon-left tn-color-black"></text>
-        <text class="tn-margin-left-xs tn-color-black">返回</text>
-      </view>
-      <view class="tn-custom-nav-bar__title tn-color-black">札记详情</view>
-    </tn-nav-bar>
-
-    <view class="tn-margin-top-xl" :style="{paddingTop: vuex_custom_bar_height + 'px'}" v-if="note">
-      <view class="tn-bg-white tn-padding">
-        <view class="tn-text-xl tn-text-bold">{{ note.title }}</view>
-        <view class="tn-flex tn-flex-row-between tn-margin-top-sm tn-color-gray tn-text-sm">
-          <view>{{ formatDate(note.create_time) }}</view>
-          <view><text class="tn-icon-mood tn-margin-right-xs"></text>{{ note.mood }}</view>
+  <view class="detail-page">
+    <!-- 顶部渐变背景 -->
+    <view class="page-header">
+      <view class="header-bg"></view>
+      <tn-nav-bar :isBack="true" fixed customBack backgroundColor="transparent" :bottomShadow="false">
+        <view slot="back" class="nav-back" @click="goBack">
+          <view class="back-btn">
+            <text class="tn-icon-left"></text>
+          </view>
         </view>
+        <view class="nav-title">札记详情</view>
+      </tn-nav-bar>
+    </view>
+
+    <view class="page-content" :style="{paddingTop: (vuex_custom_bar_height + 20) + 'px'}" v-if="note">
+      <!-- 主卡片 -->
+      <view class="detail-card">
+        <!-- 心境标签 -->
+        <view class="mood-row">
+          <view class="mood-badge">
+            <text class="mood-emoji">{{ moodEmoji(note.mood) }}</text>
+            <text class="mood-name">{{ note.mood }}</text>
+          </view>
+          <view class="privacy-badge" v-if="note.is_private">
+            <text class="tn-icon-lock"></text>
+            <text>私密</text>
+          </view>
+        </view>
+
+        <!-- 标题 -->
+        <view class="detail-title">{{ note.title }}</view>
         
-        <view class="tn-margin-top tn-text-lg" style="line-height: 1.8;">
+        <!-- 日期 -->
+        <view class="detail-date">
+          <text class="tn-icon-time"></text>
+          <text>{{ formatDate(note.create_time) }}</text>
+        </view>
+
+        <!-- 正文内容 -->
+        <view class="detail-content">
           <text>{{ note.content }}</text>
         </view>
 
         <!-- 图片展示 -->
-        <view v-if="note.images && note.images.length > 0" class="tn-margin-top">
-           <image 
-             v-for="(img, idx) in note.images" 
-             :key="idx" 
-             :src="img" 
-             mode="widthFix" 
-             class="tn-margin-bottom-sm"
-             style="width: 100%; border-radius: 10rpx;"
-             @click="previewImage(idx)"
-           ></image>
+        <view class="image-gallery" v-if="note.images && note.images.length > 0">
+          <view 
+            v-for="(img, idx) in note.images" 
+            :key="idx" 
+            class="gallery-item"
+            @click="previewImage(idx)"
+          >
+            <image :src="img" mode="aspectFill" class="gallery-image"/>
+          </view>
         </view>
         
         <!-- 标签 -->
-        <view class="tn-margin-top-lg" v-if="note.tags && note.tags.length > 0">
-          <tn-tag v-for="(tag, i) in note.tags" :key="i" backgroundColor="#F0F0F0" fontColor="#666" shape="circle" class="tn-margin-right-sm"># {{ tag }}</tn-tag>
+        <view class="tags-section" v-if="note.tags && note.tags.length > 0">
+          <view 
+            v-for="(tag, i) in note.tags" 
+            :key="i" 
+            class="tag-item"
+          >
+            <text class="tn-icon-tag"></text>
+            <text>{{ tag }}</text>
+          </view>
         </view>
       </view>
 
-      <view class="tn-padding tn-margin-top-xl">
-        <tn-button backgroundColor="#FF4444" fontColor="#FFFFFF" width="100%" @click="deleteNote">删除札记</tn-button>
+      <!-- 删除按钮 -->
+      <view class="action-section">
+        <view class="delete-btn" @click="deleteNote">
+          <text class="tn-icon-delete"></text>
+          <text>删除札记</text>
+        </view>
       </view>
+    </view>
+
+    <!-- 加载中 -->
+    <view class="loading-state" v-else :style="{paddingTop: (vuex_custom_bar_height + 100) + 'px'}">
+      <tn-loading mode="flower" color="#7B68EE"></tn-loading>
+      <text class="loading-text">加载中...</text>
     </view>
   </view>
 </template>
@@ -75,10 +113,25 @@
           console.error(e);
         }
       },
+      moodEmoji(mood) {
+        const map = {
+          '平和': '😌',
+          '喜悦': '😊',
+          '感悟': '💡',
+          '焦虑': '😰',
+          '低落': '😔'
+        };
+        return map[mood] || '😌';
+      },
       formatDate(timestamp) {
         if (!timestamp) return '';
         const date = new Date(timestamp);
-        return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}年${month}月${day}日 ${hours}:${minutes}`;
       },
       previewImage(current) {
         uni.previewImage({
@@ -88,13 +141,24 @@
       },
       deleteNote() {
         uni.showModal({
-          title: '提示',
-          content: '确定要删除这条札记吗？',
+          title: '确认删除',
+          content: '删除后将无法恢复，确定要删除这条札记吗？',
+          confirmColor: '#E07A5F',
           success: async (res) => {
             if (res.confirm) {
+              uni.showLoading({ title: '删除中' });
               const db = uniCloud.database();
-              await db.collection('dao_notes').doc(this.id).remove();
-              uni.navigateBack();
+              try {
+                await db.collection('dao_notes').doc(this.id).remove();
+                uni.hideLoading();
+                uni.showToast({ title: '已删除', icon: 'success' });
+                setTimeout(() => {
+                  uni.navigateBack();
+                }, 1500);
+              } catch (e) {
+                uni.hideLoading();
+                uni.showToast({ title: '删除失败', icon: 'none' });
+              }
             }
           }
         })
@@ -104,19 +168,224 @@
 </script>
 
 <style lang="scss" scoped>
-  .dxl-note-detail {
+  $primary: #7B68EE;
+  $primary-light: #9B8AFF;
+  $accent: #C9A86C;
+  $warm: #E07A5F;
+  $bg: #F7F5F0;
+  $card-bg: #FFFEFB;
+  $text: #2D3436;
+  $text-secondary: #636E72;
+  $text-hint: #B2BEC3;
+
+  .detail-page {
     min-height: 100vh;
-    background-color: #F8F8F8;
+    background-color: $bg;
   }
-  .tn-custom-nav-bar__back {
-    width: 100%;
-    height: 100%;
+
+  .page-header {
     position: relative;
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    position: absolute;
+  }
+
+  .header-bg {
+    position: fixed;
     top: 0;
     left: 0;
+    right: 0;
+    height: 320rpx;
+    background: linear-gradient(160deg, $primary 0%, $primary-light 100%);
+    z-index: 0;
+  }
+
+  .nav-back {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    
+    .back-btn {
+      width: 64rpx;
+      height: 64rpx;
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      text {
+        color: #FFFFFF;
+        font-size: 32rpx;
+      }
+    }
+  }
+
+  .nav-title {
+    color: #FFFFFF;
+    font-size: 34rpx;
+    font-weight: bold;
+    letter-spacing: 2rpx;
+  }
+
+  .page-content {
+    position: relative;
+    z-index: 1;
+    padding: 0 30rpx 60rpx;
+  }
+
+  .detail-card {
+    background: $card-bg;
+    border-radius: 28rpx;
+    padding: 40rpx 30rpx;
+    box-shadow: 0 10rpx 50rpx rgba(0, 0, 0, 0.08);
+  }
+
+  .mood-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24rpx;
+  }
+
+  .mood-badge {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, rgba($primary, 0.1), rgba($primary-light, 0.1));
+    padding: 12rpx 24rpx;
+    border-radius: 30rpx;
+    
+    .mood-emoji {
+      font-size: 36rpx;
+      margin-right: 10rpx;
+    }
+    
+    .mood-name {
+      font-size: 26rpx;
+      color: $primary;
+      font-weight: 500;
+    }
+  }
+
+  .privacy-badge {
+    display: flex;
+    align-items: center;
+    font-size: 24rpx;
+    color: $text-hint;
+    
+    text:first-child {
+      margin-right: 6rpx;
+    }
+  }
+
+  .detail-title {
+    font-size: 40rpx;
+    font-weight: bold;
+    color: $text;
+    line-height: 1.4;
+    margin-bottom: 20rpx;
+  }
+
+  .detail-date {
+    display: flex;
+    align-items: center;
+    font-size: 26rpx;
+    color: $text-secondary;
+    margin-bottom: 30rpx;
+    padding-bottom: 30rpx;
+    border-bottom: 1rpx solid #F0EDE8;
+    
+    text:first-child {
+      margin-right: 10rpx;
+      color: $primary;
+    }
+  }
+
+  .detail-content {
+    font-size: 32rpx;
+    color: $text;
+    line-height: 2;
+    margin-bottom: 30rpx;
+    white-space: pre-wrap;
+  }
+
+  .image-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16rpx;
+    margin-bottom: 30rpx;
+  }
+
+  .gallery-item {
+    width: calc(33.33% - 12rpx);
+    aspect-ratio: 1;
+    border-radius: 16rpx;
+    overflow: hidden;
+  }
+
+  .gallery-image {
+    width: 100%;
+    height: 100%;
+  }
+
+  .tags-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16rpx;
+    padding-top: 20rpx;
+    border-top: 1rpx solid #F0EDE8;
+  }
+
+  .tag-item {
+    display: flex;
+    align-items: center;
+    background: #F9F8F5;
+    padding: 12rpx 20rpx;
+    border-radius: 20rpx;
+    font-size: 24rpx;
+    color: $text-secondary;
+    
+    text:first-child {
+      color: $primary;
+      margin-right: 8rpx;
+      font-size: 22rpx;
+    }
+  }
+
+  .action-section {
+    margin-top: 40rpx;
+  }
+
+  .delete-btn {
+    background: #FFFEFB;
+    border: 2rpx solid #FFE4E1;
+    border-radius: 50rpx;
+    padding: 28rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    text {
+      color: #E07A5F;
+      font-size: 28rpx;
+      
+      &:first-child {
+        margin-right: 10rpx;
+      }
+    }
+    
+    &:active {
+      background: #FFF5F5;
+    }
+  }
+
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    
+    .loading-text {
+      margin-top: 20rpx;
+      font-size: 28rpx;
+      color: $text-hint;
+    }
   }
 </style>
