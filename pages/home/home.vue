@@ -164,10 +164,10 @@
     name: 'Home',
     data(){
       return {
-        greeting: '道友，早安',
-        dailyQuote: '上善若水，水善利万物而不争。',
+        greeting: '道友,早安',
+        dailyQuote: '上善若水,水善利万物而不争。',
         isTodayChecked: false,
-        navOpacity: 0,
+        navOpacity: 0.6,
         userAvatar: '',
         stats: {
           days: 0,
@@ -195,11 +195,11 @@
     },
     onPageScroll(e) {
       const top = e.scrollTop
-      const threshold = 100
+      const threshold = 80
       if (top <= 0) {
-        this.navOpacity = 0
+        this.navOpacity = 0.6
       } else if (top < threshold) {
-        this.navOpacity = top / threshold
+        this.navOpacity = 0.6 + (top / threshold) * 0.4
       } else {
         this.navOpacity = 1
       }
