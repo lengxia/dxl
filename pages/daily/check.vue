@@ -34,17 +34,17 @@
         <view class="section-card tn-bg-white tn-radius tn-padding tn-margin-bottom">
           <view class="tn-text-lg tn-text-bold tn-margin-bottom">💪 身体状况</view>
           
-          <tn-form-item label="饮水(杯)" labelWidth="150">
+          <tn-form-item label="饮水(杯)" :labelWidth="150">
             <tn-number-box v-model="form.body_check.water_cups" :min="0" :max="20"></tn-number-box>
             <view class="tn-margin-left-sm tn-text-xs tn-color-gray">8杯达标 (+5分)</view>
           </tn-form-item>
 
-          <tn-form-item label="练功(分)" labelWidth="150">
+          <tn-form-item label="练功(分)" :labelWidth="150">
             <tn-number-box v-model="form.body_check.exercise_minutes" :step="10" :min="0" :max="300"></tn-number-box>
             <view class="tn-margin-left-sm tn-text-xs tn-color-gray">每30分 (+10分)</view>
           </tn-form-item>
           
-          <tn-form-item label="胃肠状态" labelWidth="150" :borderBottom="false">
+          <tn-form-item label="胃肠状态" :labelWidth="150" :borderBottom="false">
              <tn-radio-group v-model="form.body_check.stomach_status">
                <tn-radio name="舒适">舒适</tn-radio>
                <tn-radio name="不适">不适(-5)</tn-radio>
@@ -56,12 +56,12 @@
         <view class="section-card tn-bg-white tn-radius tn-padding tn-margin-bottom">
           <view class="tn-text-lg tn-text-bold tn-margin-bottom">📚 经教修持</view>
           
-          <tn-form-item label="诵经(遍)" labelWidth="150">
+          <tn-form-item label="诵经(遍)" :labelWidth="150">
             <tn-number-box v-model="form.practice_check.scripture_count" :min="0"></tn-number-box>
             <view class="tn-margin-left-sm tn-text-xs tn-color-gray">每遍 (+10分)</view>
           </tn-form-item>
 
-          <tn-form-item label="抄经(字)" labelWidth="150" :borderBottom="false">
+          <tn-form-item label="抄经(字)" :labelWidth="150" :borderBottom="false">
             <tn-input v-model="form.practice_check.writing_words" type="number" placeholder="今日字数"></tn-input>
           </tn-form-item>
         </view>
@@ -141,11 +141,24 @@
         const now = new Date();
         const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         
+        // 确保数字类型正确，防止数据库校验失败
+        const bodyCheck = {
+          ...this.form.body_check,
+          water_cups: Number(this.form.body_check.water_cups),
+          exercise_minutes: Number(this.form.body_check.exercise_minutes)
+        };
+        
+        const practiceCheck = {
+          ...this.form.practice_check,
+          scripture_count: Number(this.form.practice_check.scripture_count),
+          writing_words: Number(this.form.practice_check.writing_words)
+        };
+
         const data = {
           date: dateStr,
           mind_check: this.form.mind_check,
-          body_check: this.form.body_check,
-          practice_check: this.form.practice_check,
+          body_check: bodyCheck,
+          practice_check: practiceCheck,
           total_score: this.currentScore,
           notes: this.form.notes
         };
@@ -154,7 +167,6 @@
         const db = uniCloud.database();
         try {
           // 检查今日是否已打卡（如果有则更新，没有则新增）
-          // 简化逻辑：先尝试查询
           const checkRes = await db.collection('daily_tasks').where(`date == "${dateStr}" && user_id == $cloudEnv_uid`).get();
           
           if (checkRes.result.data.length > 0) {
@@ -164,6 +176,7 @@
               update_time: db.command.set(Date.now())
             });
           } else {
+            // 显式添加 create_time (虽有默认值但显式更稳)
             await db.collection('daily_tasks').add(data);
           }
           
@@ -174,7 +187,9 @@
           }, 1500);
         } catch (e) {
           uni.hideLoading();
-          uni.showToast({ title: '保存失败', icon: 'none' });
+          console.error(e);
+          // 显示具体错误信息，方便排查
+          uni.showToast({ title: '保存失败: ' + (e.message || e.errMsg), icon: 'none', duration: 3000 });
         }
       }
     }

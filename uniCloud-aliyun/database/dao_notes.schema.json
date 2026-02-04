@@ -14,7 +14,10 @@
     "user_id": {
       "bsonType": "string",
       "description": "用户ID",
-      "foreignKey": "uni-id-users._id"
+      "foreignKey": "uni-id-users._id",
+      "forceDefaultValue": {
+        "$env": "uid"
+      }
     },
     "title": {
       "bsonType": "string",

@@ -1,0 +1,54 @@
+{
+  "passwordSecret": "check-daily-tasks-password-secret-123456",
+  "tokenSecret": "check-daily-tasks-token-secret-123456",
+  "tokenExpiresIn": 7200,
+  "tokenExpiresThreshold": 600,
+  "passwordErrorLimit": 6,
+  "bindTokenToDevice": false,
+  "passwordErrorRetryTime": 3600,
+  "autoSetInviteCode": false,
+  "forceInviteCode": false,
+  "app-plus": {
+    "tokenExpiresIn": 2592000,
+    "oauth": {
+      "weixin": {
+        "appid": "",
+        "appsecret": ""
+      },
+      "apple": {
+        "bundleId": ""
+      }
+    }
+  },
+  "mp-weixin": {
+    "tokenExpiresIn": 2592000,
+    "oauth": {
+      "weixin": {
+        "appid": "",
+        "appsecret": ""
+      }
+    }
+  },
+  "mp-alipay": {
+    "tokenExpiresIn": 2592000,
+    "oauth": {
+      "alipay": {
+        "appid": "",
+        "privateKey": ""
+      }
+    }
+  },
+  "service": {
+    "sms": {
+      "name": "",
+      "codeExpiresIn": 180,
+      "smsKey": "",
+      "smsSecret": ""
+    },
+    "univerify": {
+      "appid": "",
+      "apiKey": "",
+      "apiSecret": ""
+    }
+  }
+}
