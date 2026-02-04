@@ -1,208 +1,264 @@
 <template>
-  <view class="template-set">
+  <view class="settings-page tn-safe-area-inset-bottom">
     <!-- 顶部自定义导航 -->
-    <tn-nav-bar fixed customBack backgroundColor="#FFFFFF" :bottomShadow="false">
-      <view slot="back" class='tn-custom-nav-bar__back'
-        @click="goBack">
-        <text class='icon tn-icon-left-arrow tn-color-black'></text>
+    <tn-nav-bar fixed customBack backgroundColor="#FFFEFB" :bottomShadow="false">
+      <view slot="back" class="nav-back" @click="goBack">
+        <view class="back-btn">
+          <text class="tn-icon-left"></text>
+        </view>
       </view>
+      <view class="nav-title">系统设置</view>
     </tn-nav-bar>
 
-    <view class="tn-margin-top" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
+    <view class="page-content" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
       
-      
-      <view class="tn-flex tn-flex-row-between tn-strip-bottom-min tn-padding" @click="tn('/pages/mine/avatar')">
-        <view class="justify-content-item">
-          <view class="tn-text-bold tn-text-lg">
-            用户头像
+      <!-- 用户头像设置 -->
+      <view class="settings-card">
+        <view class="card-title">个人资料</view>
+        
+        <view class="setting-item" @click="tn('/pages/mine/avatar')">
+          <view class="item-left">
+            <view class="item-icon" style="background: linear-gradient(135deg, #3D8B8F, #5AABAD);">
+              <text class="tn-icon-my-fill"></text>
+            </view>
+            <view class="item-info">
+              <view class="item-label">用户头像</view>
+              <view class="item-desc">有趣的头像，百里挑一</view>
+            </view>
           </view>
-          <view class="tn-color-gray tn-padding-top-xs">
-            有趣的头像，百里挑一
+          <view class="item-right">
+            <view class="avatar-preview">
+              <image 
+                src="https://resource.tuniaokj.com/images/avatar/default_avatar.jpg" 
+                class="avatar-img"
+                mode="aspectFill"
+              />
+            </view>
+            <text class="tn-icon-right"></text>
           </view>
         </view>
-        <view class="justify-content-item tn-text-lg tn-color-grey">
-          <view class="logo-pic tn-shadow">
-            <view class="logo-image">
-              <view class="tn-shadow-blur" style="background-image:url('https://cdn.nlark.com/yuque/0/2022/jpeg/280373/1664005699053-assets/web-upload/8645ea3a-e0a9-4422-8364-cc5ede305c9f.jpeg');width: 80rpx;height: 80rpx;background-size: cover;">
+        
+        <view class="item-divider"></view>
+        
+        <view class="setting-item" @click="showModal1">
+          <view class="item-left">
+            <view class="item-icon" style="background: linear-gradient(135deg, #C9A86C, #D4B87A);">
+              <text class="tn-icon-edit"></text>
+            </view>
+            <view class="item-info">
+              <view class="item-label">用户昵称</view>
+              <view class="item-desc">{{ nickname || '点击设置昵称' }}</view>
+            </view>
+          </view>
+          <view class="item-right">
+            <text class="tn-icon-right"></text>
+          </view>
+        </view>
+        
+        <view class="item-divider"></view>
+        
+        <view class="setting-item" @click="showModal2">
+          <view class="item-left">
+            <view class="item-icon" style="background: linear-gradient(135deg, #7B68EE, #9B8AFF);">
+              <text class="tn-icon-call-fill"></text>
+            </view>
+            <view class="item-info">
+              <view class="item-label">绑定手机号</view>
+              <view class="item-desc">{{ phone || '未绑定' }}</view>
+            </view>
+          </view>
+          <view class="item-right">
+            <text class="tn-icon-right"></text>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 个人信息 -->
+      <view class="settings-card">
+        <view class="card-title">基本信息</view>
+        
+        <view class="setting-item" @click="showModal3">
+          <view class="item-left">
+            <view class="item-icon" style="background: linear-gradient(135deg, #E07A5F, #F09A7F);">
+              <text class="tn-icon-medal-fill"></text>
+            </view>
+            <view class="item-info">
+              <view class="item-label">姓名</view>
+              <view class="item-desc">{{ realname || '未填写' }}</view>
+            </view>
+          </view>
+          <view class="item-right">
+            <text class="tn-icon-right"></text>
+          </view>
+        </view>
+        
+        <view class="item-divider"></view>
+        
+        <picker @change="bindPickerChange" :value="index" :range="genderArray">
+          <view class="setting-item">
+            <view class="item-left">
+              <view class="item-icon" style="background: linear-gradient(135deg, #26A69A, #4DB6AC);">
+                <text class="tn-icon-my-fill"></text>
+              </view>
+              <view class="item-info">
+                <view class="item-label">性别</view>
+                <view class="item-desc">{{ genderArray[index] }}</view>
               </view>
             </view>
+            <view class="item-right">
+              <text class="tn-icon-right"></text>
+            </view>
           </view>
-        </view>
+        </picker>
+        
+        <view class="item-divider"></view>
+        
+        <picker @change="bindDateChange" mode="date" :value="date" :start="startDate" :end="endDate">
+          <view class="setting-item">
+            <view class="item-left">
+              <view class="item-icon" style="background: linear-gradient(135deg, #FF7043, #FF8A65);">
+                <text class="tn-icon-calendar-fill"></text>
+              </view>
+              <view class="item-info">
+                <view class="item-label">生日</view>
+                <view class="item-desc">{{ date }}</view>
+              </view>
+            </view>
+            <view class="item-right">
+              <text class="tn-icon-right"></text>
+            </view>
+          </view>
+        </picker>
+        
+        <view class="item-divider"></view>
+        
+        <picker @change="bindJobChange" :value="jobIndex" :range="jobArray">
+          <view class="setting-item">
+            <view class="item-left">
+              <view class="item-icon" style="background: linear-gradient(135deg, #5C6BC0, #7986CB);">
+                <text class="tn-icon-service-fill"></text>
+              </view>
+              <view class="item-info">
+                <view class="item-label">职业</view>
+                <view class="item-desc">{{ jobArray[jobIndex] }}</view>
+              </view>
+            </view>
+            <view class="item-right">
+              <text class="tn-icon-right"></text>
+            </view>
+          </view>
+        </picker>
       </view>
       
-      <view class="tn-flex tn-flex-row-between tn-strip-bottom-min tn-padding" @click="showModal1">
-        <view class="justify-content-item">
-          <view class="tn-text-bold tn-text-lg">
-            用户昵称
-          </view>
-          <view class="tn-color-gray tn-padding-top-xs">
-            不许凶我
-          </view>
-        </view>
-        <view class="justify-content-item tn-text-lg tn-color-grey">
-          <view class="tn-icon-right tn-padding-top"></view>
-        </view>
-      </view>
-      
-      <view class="tn-flex tn-flex-row-between tn-strip-bottom tn-padding" @click="showModal2">
-        <view class="justify-content-item">
-          <view class="tn-text-bold tn-text-lg">
-            绑定手机号
-          </view>
-          <view class="tn-color-gray tn-padding-top-xs">
-            13911111193
-          </view>
-        </view>
-        <view class="justify-content-item tn-text-lg tn-color-grey">
-          <view class="tn-icon-right tn-padding-top"></view>
-        </view>
-      </view>
-      
-      <view class="tn-flex tn-flex-row-between tn-strip-bottom-min tn-padding" @click="showModal3">
-        <view class="justify-content-item">
-          <view class="tn-text-bold tn-text-lg">
-            姓名
-          </view>
-          <view class="tn-color-gray tn-padding-top-xs">
-            未填写
-          </view>
-        </view>
-        <view class="justify-content-item tn-text-lg tn-color-grey">
-          <view class="tn-icon-right tn-padding-top"></view>
-        </view>
-      </view>
-      <picker @change="bindPickerChange" :value="index" :range="array">
-        <view class="tn-flex tn-flex-row-between tn-strip-bottom-min tn-padding" >
-          <view class="justify-content-item">
-            <view class="tn-text-bold tn-text-lg">
-              性别
-            </view>
-            <view class="tn-color-gray tn-padding-top-xs">
-              
-                <view class="tn-color-gray">{{array[index]}}</view>
-            </view>
-          </view>
-          <view class="justify-content-item tn-text-lg tn-color-grey">
-            <view class="tn-icon-right tn-padding-top"></view>
-          </view>
-        </view>
-      </picker>
-      <picker @change="bindDateChange" mode="date" :value="date" :start="startDate" :end="endDate">
-        <view class="tn-flex tn-flex-row-between tn-strip-bottom-min tn-padding">
-          <view class="justify-content-item">
-            <view class="tn-text-bold tn-text-lg">
-              生日
-            </view>
-            <view class="tn-color-gray tn-padding-top-xs">
-              {{date}}
-            </view>
-          </view>
-          <view class="justify-content-item tn-text-lg tn-color-grey">
-            <view class="tn-icon-right tn-padding-top"></view>
-          </view>
-        </view>
-      </picker>
-      <picker @change="bindPickerChange1" :value="index1" :range="array1">
-        <view class="tn-flex tn-flex-row-between tn-strip-bottom-min tn-padding">
-          <view class="justify-content-item">
-            <view class="tn-text-bold tn-text-lg">
-              职业
-            </view>
-            <view class="tn-color-gray tn-padding-top-xs">
-              {{array1[index1]}}
-            </view>
-          </view>
-          <view class="justify-content-item tn-text-lg tn-color-grey">
-            <view class="tn-icon-right tn-padding-top"></view>
-          </view>
-        </view>
-      </picker>
+      <!-- 修改昵称弹窗 -->
       <tn-modal v-model="show1" :custom="true" :showCloseBtn="true">
-        <view class="custom-modal-content">
-          <view class="">
-            <view class="tn-text-lg tn-text-bold tn-color-purplered tn-text-center tn-padding">修改昵称</view>
-            <view class="tn-bg-gray--light" style="border-radius: 10rpx;padding: 20rpx 30rpx;margin: 50rpx 0 60rpx 0;">
-            	<input placeholder="不许凶我" name="input" placeholder-style="color:#AAAAAA" maxlength="20"></input>
-            </view>
+        <view class="modal-content">
+          <view class="modal-title">修改昵称</view>
+          <view class="modal-input-wrap">
+            <input 
+              v-model="tempNickname"
+              placeholder="请输入昵称" 
+              placeholder-style="color:#B2BEC3"
+              maxlength="20"
+            />
           </view>
-          <view class="tn-flex-1 justify-content-item tn-margin-sm tn-text-center">
-            <tn-button backgroundColor="#3668FC" padding="40rpx 0" width="60%" shadow fontBold>
-              <text class="tn-color-white">保 存</text>
+          <view class="modal-btn">
+            <tn-button 
+              backgroundColor="#3D8B8F" 
+              fontColor="#FFFFFF"
+              shape="round"
+              width="60%"
+              shadow
+              @click="saveNickname"
+            >
+              保存
             </tn-button>
           </view>
         </view>
       </tn-modal>
       
+      <!-- 修改手机号弹窗 -->
       <tn-modal v-model="show2" :custom="true" :showCloseBtn="true">
-        <view class="custom-modal-content">
-          <view class="">
-            <view class="tn-text-lg tn-text-bold tn-color-purplered tn-text-center tn-padding">变更手机号码</view>
-            <view class="tn-bg-gray--light tn-color-gray" style="border-radius: 10rpx;padding: 20rpx 30rpx;margin: 50rpx 0 60rpx 0;">
-              13911111193
-            </view>
-          </view>
-          <view class="tn-flex-1 justify-content-item tn-margin-sm tn-text-center">
-            <tn-button backgroundColor="#3668FC" padding="40rpx 0" width="60%" shadow fontBold>
-              <text class="tn-color-white">获取手机号</text>
+        <view class="modal-content">
+          <view class="modal-title">绑定手机号</view>
+          <view class="modal-desc">{{ phone || '暂未绑定手机号' }}</view>
+          <view class="modal-btn">
+            <tn-button 
+              backgroundColor="#3D8B8F" 
+              fontColor="#FFFFFF"
+              shape="round"
+              width="60%"
+              shadow
+            >
+              获取手机号
             </tn-button>
-            <!-- <tn-button backgroundColor="#3668FC" padding="40rpx 0" width="60%" shadow fontBold open-type="getPhoneNumber">
-              <text class="tn-color-white">获取手机号</text>
-            </tn-button> -->
-            <view class="tn-padding-top-sm">因为获取手机号api收费了，所以这里注释掉，需要的自行展示出来即可</view>
+          </view>
+          <view class="modal-hint">
+            注：获取手机号API收费，此功能需自行配置
           </view>
         </view>
       </tn-modal>
       
+      <!-- 修改姓名弹窗 -->
       <tn-modal v-model="show3" :custom="true" :showCloseBtn="true">
-        <view class="custom-modal-content">
-          <view class="">
-            <view class="tn-text-lg tn-text-bold tn-color-purplered tn-text-center tn-padding">请输入真实姓名</view>
-            <view class="tn-bg-gray--light" style="border-radius: 10rpx;padding: 20rpx 30rpx;margin: 50rpx 0 60rpx 0;">
-              <input placeholder="请填写姓名" name="input" placeholder-style="color:#AAAAAA" maxlength="20"></input>
-            </view>
+        <view class="modal-content">
+          <view class="modal-title">填写姓名</view>
+          <view class="modal-input-wrap">
+            <input 
+              v-model="tempRealname"
+              placeholder="请输入真实姓名" 
+              placeholder-style="color:#B2BEC3"
+              maxlength="20"
+            />
           </view>
-          <view class="tn-flex-1 justify-content-item tn-margin-sm tn-text-center">
-            <tn-button backgroundColor="#3668FC" padding="40rpx 0" width="60%" shadow fontBold>
-              <text class="tn-color-white">保 存</text>
+          <view class="modal-btn">
+            <tn-button 
+              backgroundColor="#3D8B8F" 
+              fontColor="#FFFFFF"
+              shape="round"
+              width="60%"
+              shadow
+              @click="saveRealname"
+            >
+              保存
             </tn-button>
           </view>
         </view>
       </tn-modal>
-      
-      
-      
       
     </view>
-    
-    
   </view>
 </template>
 
 <script>
   export default {
-    name: 'TemplateSet',
+    name: 'Settings',
     data(){
       return {
         show1: false,
         show2: false,
         show3: false,
-        index: 0,
-        array: ['女', '男', '保密'],
-        date: '2000-01-29',
-        index1: 1,
-        array1: ['计算机/电子', '广告/媒体', '会计/金融', '政府/非盈利组织/其他'],
+        nickname: '修行者',
+        tempNickname: '',
+        phone: '',
+        realname: '',
+        tempRealname: '',
+        index: 2,
+        genderArray: ['女', '男', '保密'],
+        date: '2000-01-01',
+        jobIndex: 0,
+        jobArray: ['计算机/互联网', '教育/培训', '医疗/健康', '金融/财务', '自由职业', '其他']
       }
     },
     computed: {
-        startDate() {
-            return this.getDate('start');
-        },
-        endDate() {
-            return this.getDate('end');
-        }
+      startDate() {
+        return this.getDate('start');
+      },
+      endDate() {
+        return this.getDate('end');
+      }
     },
     methods: {
-      // 点击左上角返回按钮时触发事件
       goBack() {
         const pages = getCurrentPages()
         if (pages && pages.length > 0) {
@@ -222,143 +278,235 @@
           })
         }
       },
-      // 跳转
       tn(e) {
-      	uni.navigateTo({
-      		url: e,
-      	});
+        uni.navigateTo({
+          url: e,
+        });
       },
-      
-      // 弹出模态框
-      showModal1(event) {
-        this.openModal1()
+      showModal1() {
+        this.tempNickname = this.nickname;
+        this.show1 = true;
       },
-      // 打开模态框
-      openModal1() {
-        this.show1 = true
+      showModal2() {
+        this.show2 = true;
       },
-      
-      // 弹出模态框
-      showModal2(event) {
-        this.openModal2()
+      showModal3() {
+        this.tempRealname = this.realname;
+        this.show3 = true;
       },
-      // 打开模态框
-      openModal2() {
-        this.show2 = true
+      saveNickname() {
+        if (this.tempNickname.trim()) {
+          this.nickname = this.tempNickname.trim();
+        }
+        this.show1 = false;
       },
-      
-      // 弹出模态框
-      showModal3(event) {
-        this.openModal3()
+      saveRealname() {
+        if (this.tempRealname.trim()) {
+          this.realname = this.tempRealname.trim();
+        }
+        this.show3 = false;
       },
-      // 打开模态框
-      openModal3() {
-        this.show3 = true
+      bindPickerChange(e) {
+        this.index = e.detail.value;
       },
-      
-      bindPickerChange: function(e) {
-        this.index = e.detail.value
+      bindJobChange(e) {
+        this.jobIndex = e.detail.value;
       },
-      
-      bindPickerChange1: function(e) {
-        this.index1 = e.detail.value
+      bindDateChange(e) {
+        this.date = e.detail.value;
       },
-      
-      bindDateChange: function(e) {
-          this.date = e.detail.value
-      },
-      
       getDate(type) {
-          const date = new Date();
-          let year = date.getFullYear();
-          let month = date.getMonth() + 1;
-          let day = date.getDate();
-      
-          if (type === 'start') {
-              year = year - 60;
-          } else if (type === 'end') {
-              year = year + 2;
-          }
-          month = month > 9 ? month : '0' + month;
-          day = day > 9 ? day : '0' + day;
-          return `${year}-${month}-${day}`;
+        const date = new Date();
+        let year = date.getFullYear();
+        let month = date.getMonth() + 1;
+        let day = date.getDate();
+    
+        if (type === 'start') {
+          year = year - 80;
+        } else if (type === 'end') {
+          year = year;
+        }
+        month = month > 9 ? month : '0' + month;
+        day = day > 9 ? day : '0' + day;
+        return `${year}-${month}-${day}`;
       }
-        
     }
   }
 </script>
 
 <style lang="scss" scoped>
-    /* 胶囊*/
-    .tn-custom-nav-bar__back {
-      width: 60%;
-      height: 100%;
-      position: relative;
-      display: flex;
-      justify-content: space-evenly;
-      align-items: center;
-      box-sizing: border-box;
-      background-color: transparent;
-      border-radius: 1000rpx;
-      border: 1rpx solid transparent;
-      font-size: 18px;
-      
-      .icon {
-        display: block;
-        flex: 1;
-        margin: auto;
-        text-align: center;
-      }
-      
-    }
+  // 道心录配色
+  $primary: #3D8B8F;
+  $primary-light: #5AABAD;
+  $accent: #C9A86C;
+  $bg: #F7F5F0;
+  $card-bg: #FFFEFB;
+  $text: #2D3436;
+  $text-secondary: #636E72;
+  $text-hint: #B2BEC3;
 
-
-    /* 间隔线 start*/
-    .tn-strip-bottom-min {
-      width: 100%;
-      border-bottom: 1rpx solid #F8F9FB;
-    }
+  .settings-page {
+    min-height: 100vh;
+    background-color: $bg;
+  }
+  
+  .nav-back {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding-left: 20rpx;
     
-    .tn-strip-bottom {
-     width: 100%;
-     border-bottom: 20rpx solid rgba(241, 241, 241, 0.8);
+    .back-btn {
+      width: 60rpx;
+      height: 60rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      text {
+        font-size: 36rpx;
+        color: $text;
+      }
     }
-     /* 间隔线 end*/
-
-
-  /* 用户头像 start */
-  .logo-image {
-    width: 80rpx;
-    height: 80rpx;
-    position: relative;
+  }
+  
+  .nav-title {
+    font-size: 34rpx;
+    font-weight: bold;
+    color: $text;
+  }
+  
+  .page-content {
+    padding: 30rpx;
+    padding-top: 20rpx;
   }
 
-  .logo-pic {
-    background-size: cover;
-    background-repeat: no-repeat;
-    // background-attachment:fixed;
-    background-position: top;
-    border: 2rpx solid rgba(255,255,255,0.05);
-    box-shadow: 0rpx 0rpx 80rpx 0rpx rgba(0, 0, 0, 0.15);
+  // 设置卡片
+  .settings-card {
+    background: $card-bg;
+    border-radius: 24rpx;
+    padding: 0 30rpx;
+    margin-bottom: 30rpx;
+    box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+  }
+  
+  .card-title {
+    font-size: 26rpx;
+    color: $text-hint;
+    padding: 24rpx 0 16rpx;
+    border-bottom: 1rpx solid #F5F5F5;
+  }
+  
+  .setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 28rpx 0;
+  }
+  
+  .item-left {
+    display: flex;
+    align-items: center;
+    flex: 1;
+  }
+  
+  .item-icon {
+    width: 70rpx;
+    height: 70rpx;
+    border-radius: 18rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 24rpx;
+    
+    text {
+      font-size: 34rpx;
+      color: #FFFFFF;
+    }
+  }
+  
+  .item-info {
+    flex: 1;
+    
+    .item-label {
+      font-size: 30rpx;
+      font-weight: 500;
+      color: $text;
+      margin-bottom: 6rpx;
+    }
+    
+    .item-desc {
+      font-size: 24rpx;
+      color: $text-hint;
+    }
+  }
+  
+  .item-right {
+    display: flex;
+    align-items: center;
+    
+    text {
+      font-size: 28rpx;
+      color: $text-hint;
+    }
+  }
+  
+  .avatar-preview {
+    width: 70rpx;
+    height: 70rpx;
     border-radius: 50%;
     overflow: hidden;
-    // background-color: #FFFFFF;
-  }
-
-
-  /* 底部悬浮按钮 start*/
-  .tn-tabbar-height {
-  	min-height: 100rpx;
-  	height: calc(120rpx + env(safe-area-inset-bottom) / 2);
-  }
-  .tn-footerfixed {
-    position: fixed;
-    width: 100%;
-    bottom: calc(30rpx + env(safe-area-inset-bottom));
-    z-index: 1024;
-    box-shadow: 0 1rpx 6rpx rgba(0, 0, 0, 0);
+    margin-right: 16rpx;
     
+    .avatar-img {
+      width: 100%;
+      height: 100%;
+    }
   }
-  /* 底部悬浮按钮 end*/
   
+  .item-divider {
+    height: 1rpx;
+    background: #F5F5F5;
+    margin-left: 94rpx;
+  }
+
+  // 弹窗样式
+  .modal-content {
+    padding: 40rpx;
+    text-align: center;
+  }
+  
+  .modal-title {
+    font-size: 34rpx;
+    font-weight: bold;
+    color: $text;
+    margin-bottom: 30rpx;
+  }
+  
+  .modal-desc {
+    font-size: 28rpx;
+    color: $text-secondary;
+    margin-bottom: 40rpx;
+  }
+  
+  .modal-input-wrap {
+    background: $bg;
+    border-radius: 16rpx;
+    padding: 24rpx 30rpx;
+    margin-bottom: 40rpx;
+    
+    input {
+      font-size: 30rpx;
+      color: $text;
+    }
+  }
+  
+  .modal-btn {
+    margin-bottom: 20rpx;
+  }
+  
+  .modal-hint {
+    font-size: 22rpx;
+    color: $text-hint;
+  }
 </style>

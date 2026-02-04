@@ -14,9 +14,9 @@
     <tn-tabbar
       v-model="currentIndex"
       :list="tabbarList"
-      activeColor="#838383"
-      inactiveColor="#AAAAAA"
-      activeIconColor="#3668FC"
+      activeColor="#3D8B8F"
+      inactiveColor="#B2BEC3"
+      activeIconColor="#3D8B8F"
       :animation="true"
       :safeAreaInsetBottom="true"
       @change="switchTabbar"
@@ -88,4 +88,11 @@
 </script>
 
 <style lang="scss" scoped>
+  .start-index {
+    background-color: #F7F5F0;
+  }
+  
+  .custom-tabbar-page {
+    height: calc(100vh - env(safe-area-inset-bottom) - 100rpx);
+  }
 </style>
