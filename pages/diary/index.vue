@@ -307,28 +307,21 @@
   
   .section-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 20rpx;
+    margin-bottom: 24rpx;
     
     .section-title {
-      font-size: 30rpx;
+      font-size: 32rpx;
       font-weight: bold;
       color: $text;
-      position: relative;
-      padding-left: 20rpx;
-      
-      &::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 6rpx;
-        height: 28rpx;
-        background: $accent;
-        border-radius: 3rpx;
-      }
+      margin-right: 20rpx;
+    }
+    
+    &::after {
+      content: '';
+      flex: 1;
+      height: 2rpx;
+      background: linear-gradient(90deg, $accent-light, transparent);
     }
   }
   
