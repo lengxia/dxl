@@ -91,7 +91,7 @@
           道不远人，勤修不辍
         </view>
         <view class="copyright">
-          Copyright 2024 DaoXinLu
+          Copyright 2026 DaoXinLu
         </view>
       </view>
 
