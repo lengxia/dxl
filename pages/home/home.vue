@@ -18,7 +18,7 @@
               <view class="greeting-text">{{ greeting }}</view>
               <view class="date-text">{{ todayDate }}</view>
             </view>
-            <view class="avatar-box" @click="tn('/pages/mine/index')">
+            <view class="avatar-box" @click="tn('/pages/mine/mine')">
               <image 
                 :src="userAvatar || '/static/logo.png'" 
                 class="avatar-img"
@@ -32,7 +32,7 @@
             <view class="quote-icon">
               <text class="tn-icon-flower"></text>
             </view>
-            <view class="quote-text">{{ dailyQuote }}</view>
+            <view class="quote-text">“{{ dailyQuote }}”</view>
           </view>
         </view>
       </view>
@@ -165,7 +165,7 @@
     data(){
       return {
         greeting: '道友,早安',
-        dailyQuote: '“上善若水，水善利万物而不争。”',
+        dailyQuote: '上善若水,水善利万物而不争。',
         isTodayChecked: false,
         navOpacity: 0.6,
         userAvatar: '',
@@ -176,21 +176,10 @@
         }
       }
     },
-    onPageScroll(e) {
-      const top = e.scrollTop
-      const threshold = 80
-      if (top <= 0) {
-        this.navOpacity = 0.6
-      } else if (top < threshold) {
-        this.navOpacity = 0.6 + (top / threshold) * 0.4
-      } else {
-        this.navOpacity = 1
-      }
-    },
-    created() {
-      this.setGreeting();
-    },
     computed: {
+      vuexUser() {
+        return this.$store.state.vuex_user || {};
+      },
       navBackgroundColor() {
         return `rgba(255, 254, 251, ${this.navOpacity})`
       },
@@ -205,14 +194,21 @@
       levelName() {
         const levelNames = ['初入道门', '筑基初成', '开光境界', '融合之境', '心动大成', '金丹圆满'];
         return levelNames[Math.min(this.stats.level - 1, levelNames.length - 1)] || '初入道门';
-      },
-      // 引入 Vuex 用户信息
-      vuexUser() {
-        return this.$store.state.vuex_user || {};
+      }
+    },
+    onPageScroll(e) {
+      const top = e.scrollTop
+      const threshold = 80
+      if (top <= 0) {
+        this.navOpacity = 0.6
+      } else if (top < threshold) {
+        this.navOpacity = 0.6 + (top / threshold) * 0.4
+      } else {
+        this.navOpacity = 1
       }
     },
     watch: {
-      // 监听 Vuex 变化，实时更新头像
+      // 监听 Vuex 用户状态，实现与"我的"页面头像实时同步
       vuexUser: {
         handler(newVal) {
           if (newVal && newVal.avatar) {
@@ -222,6 +218,9 @@
         deep: true,
         immediate: true
       }
+    },
+    created() {
+      this.setGreeting();
     },
     onShow() {
       this.loadData();
@@ -250,44 +249,33 @@
         // 优先从 uniCloud 获取用户ID，如果没有再从本地存储获取
         let uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
         if (!uid) {
-          // 尝试从 Vuex 获取
-          if (this.vuexUser && this.vuexUser.uid) {
-            uid = this.vuexUser.uid;
-          } else {
-            console.log('无法获取用户ID，跳过数据加载');
-            this.stats.days = 0;
-            this.stats.merit = 0;
-            this.stats.level = 1;
-            return;
-          }
+          console.log('无法获取用户ID，跳过数据加载');
+          // 重置显示状态避免重复日志
+          this.userAvatar = '';
+          this.stats.days = 0;
+          this.stats.merit = 0;
+          this.stats.level = 1;
+          return;
         }
         
         // 如果从 getCurrentUserInfo 获取到了 uid，保存到本地存储
         if (uniCloud.getCurrentUserInfo().uid && !uni.getStorageSync('uni_id_user_uid')) {
           uni.setStorageSync('uni_id_user_uid', uid);
+          console.log('保存用户ID到本地存储:', uid);
         }
 
         const db = uniCloud.database();
         
-        // 1. 获取用户信息中的统计数据（改用 water-api）
+        // 1. 获取用户信息中的统计数据
         try {
-           const waterApi = uniCloud.importObject('water-api');
-           const res = await waterApi.getUserInfo({ uid });
+           const userRes = await db.collection('uni-id-users')
+             .doc(uid)
+             .field('dao_profile,avatar')
+             .get();
            
-           if(res.errCode === 0 && res.data) {
-             const user = res.data;
+           if(userRes.result.data) {
+             const user = userRes.result.data;
              this.userAvatar = user.avatar || '';
-             
-             // 更新 Vuex 中的头像，保持同步
-             if (user.avatar && (!this.vuexUser.avatar || this.vuexUser.avatar !== user.avatar)) {
-               this.$store.commit('$tStore', {
-                 name: 'vuex_user',
-                 value: {
-                   ...this.vuexUser,
-                   avatar: user.avatar
-                 }
-               });
-             }
              
              if(user.dao_profile) {
                const p = user.dao_profile;
@@ -314,15 +302,11 @@
         try {
           const now = new Date();
           const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-          const waterApi = uniCloud.importObject('water-api');
-          const taskRes = await waterApi.checkTodayTask({
-            date: dateStr,
-            user_id: uid
-          });
-          
-          if (taskRes.errCode === 0 && taskRes.data) {
-            this.isTodayChecked = taskRes.data.total > 0;
-          }
+          const taskRes = await db.collection('daily_tasks')
+            .where(`date == "${dateStr}" && user_id == "${uid}"`)
+            .count();
+            
+          this.isTodayChecked = taskRes.result.total > 0;
         } catch(e) {
           console.error('检查打卡失败', e);
         }

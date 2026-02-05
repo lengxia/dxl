@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "prompt": "template",
+  "title": "用户协议和隐私政策",
+  "message": "　　欢迎使用“道心录”！我们非常重视您的个人信息和隐私保护。在您使用服务前，请认真阅读<a href=\"https://ask.dcloud.net.cn/protocol.html\">《用户服务协议》</a>和<a href=\"https://ask.dcloud.net.cn/protocol.html\">《隐私政策》</a>，我们将严格按照您同意的条款使用和保护您的个人信息。\n　　请您阅读并同意上述协议，开始使用我们的服务。",
+  "buttonAccept": "同意并接受",
+  "buttonRefuse": "不同意",
+  "second": {
+    "title": "确认提示",
+    "message": "　　进入“道心录”前，请您务必认真阅读并同意<a href=\"https://ask.dcloud.net.cn/protocol.html\">《用户服务协议》</a>和<a href=\"https://ask.dcloud.net.cn/protocol.html\">《隐私政策》</a>，否则我们将无法为您提供服务。",
+    "buttonAccept": "同意并接受",
+    "buttonRefuse": "退出应用"
+  },
+  "styles": {
+    "backgroundColor": "#FFFFFF",
+    "borderRadius": "10px",
+    "title": {
+      "color": "#3D8B8F"
+    },
+    "buttonAccept": {
+      "color": "#FFFFFF",
+      "background": "#3D8B8F"
+    },
+    "buttonRefuse": {
+      "color": "#636E72"
+    }
+  }
+}
