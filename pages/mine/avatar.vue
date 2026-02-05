@@ -168,12 +168,24 @@
           const avatarUrl = uploadRes.fileID;
           
           // 更新用户头像
-          const db = uniCloud.database();
-          await db.collection('uni-id-users')
-            .where('_id == $cloudEnv_uid')
-            .update({
+          let uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+          if (!uid) {
+            uni.hideLoading();
+            uni.showToast({ title: '请重新登录', icon: 'none' });
+            return;
+          }
+          
+          const waterApi = uniCloud.importObject('water-api');
+          const res = await waterApi.updateUserInfo({
+            uid: uid,
+            data: {
               avatar: avatarUrl
-            });
+            }
+          });
+          
+          if (res.errCode !== 0) {
+            throw new Error(res.errMsg);
+          }
           
           uni.hideLoading();
           uni.showToast({ title: '上传成功', icon: 'success' });

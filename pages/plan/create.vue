@@ -201,7 +201,7 @@
       removeGoal(index) {
         this.form.goals.splice(index, 1);
       },
-      submit() {
+      async submit() {
         if (!this.form.year_month) {
           uni.showToast({ title: '请选择月份', icon: 'none' });
           return;
@@ -220,18 +220,30 @@
         }
 
         uni.showLoading({ title: '保存中' });
-        const db = uniCloud.database();
         
-        db.collection('monthly_plans').add(this.form).then(() => {
-          uni.hideLoading();
-          uni.showToast({ title: '创建成功', icon: 'success' });
-          setTimeout(() => {
-            uni.navigateBack();
-          }, 1500);
-        }).catch(e => {
+        try {
+          const waterApi = uniCloud.importObject('water-api');
+          const data = {
+            ...this.form,
+            user_id: uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid')
+          };
+          
+          const res = await waterApi.addMonthlyPlan(data);
+          
+          if (res.errCode === 0) {
+            uni.hideLoading();
+            uni.showToast({ title: '创建成功', icon: 'success' });
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
+          } else {
+            throw new Error(res.errMsg);
+          }
+        } catch (e) {
           uni.hideLoading();
           uni.showToast({ title: '保存失败', icon: 'none' });
-        });
+          console.error('保存计划失败:', e);
+        }
       }
     }
   }

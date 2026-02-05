@@ -223,17 +223,29 @@
         }
         
         uni.showLoading({ title: '记录中' });
-        const db = uniCloud.database();
+        
         try {
-          await db.collection('good_deeds').add(this.form);
-          uni.hideLoading();
-          uni.showToast({ title: '记录成功', icon: 'success' });
-          setTimeout(() => {
-            uni.navigateBack();
-          }, 1500);
+          const waterApi = uniCloud.importObject('water-api');
+          const data = {
+            ...this.form,
+            user_id: uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid')
+          };
+          
+          const res = await waterApi.addDiary(data);
+          
+          if (res.errCode === 0) {
+            uni.hideLoading();
+            uni.showToast({ title: '记录成功', icon: 'success' });
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
+          } else {
+            throw new Error(res.errMsg);
+          }
         } catch (e) {
           uni.hideLoading();
           uni.showToast({ title: '保存失败', icon: 'none' });
+          console.error('保存日记失败:', e);
         }
       }
     }

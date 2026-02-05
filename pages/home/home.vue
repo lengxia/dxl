@@ -18,7 +18,7 @@
               <view class="greeting-text">{{ greeting }}</view>
               <view class="date-text">{{ todayDate }}</view>
             </view>
-            <view class="avatar-box" @click="tn('/pages/mine/mine')">
+            <view class="avatar-box" @click="tn('/pages/mine/index')">
               <image 
                 :src="userAvatar || '/static/logo.png'" 
                 class="avatar-img"
@@ -32,7 +32,7 @@
             <view class="quote-icon">
               <text class="tn-icon-flower"></text>
             </view>
-            <view class="quote-text">"{{ dailyQuote }}"</view>
+            <view class="quote-text">{{ dailyQuote }}</view>
           </view>
         </view>
       </view>
@@ -165,7 +165,7 @@
     data(){
       return {
         greeting: '道友,早安',
-        dailyQuote: '上善若水,水善利万物而不争。',
+        dailyQuote: '“上善若水，水善利万物而不争。”',
         isTodayChecked: false,
         navOpacity: 0.6,
         userAvatar: '',
@@ -175,6 +175,20 @@
           level: 1
         }
       }
+    },
+    onPageScroll(e) {
+      const top = e.scrollTop
+      const threshold = 80
+      if (top <= 0) {
+        this.navOpacity = 0.6
+      } else if (top < threshold) {
+        this.navOpacity = 0.6 + (top / threshold) * 0.4
+      } else {
+        this.navOpacity = 1
+      }
+    },
+    created() {
+      this.setGreeting();
     },
     computed: {
       navBackgroundColor() {
@@ -191,21 +205,23 @@
       levelName() {
         const levelNames = ['初入道门', '筑基初成', '开光境界', '融合之境', '心动大成', '金丹圆满'];
         return levelNames[Math.min(this.stats.level - 1, levelNames.length - 1)] || '初入道门';
+      },
+      // 引入 Vuex 用户信息
+      vuexUser() {
+        return this.$store.state.vuex_user || {};
       }
     },
-    onPageScroll(e) {
-      const top = e.scrollTop
-      const threshold = 80
-      if (top <= 0) {
-        this.navOpacity = 0.6
-      } else if (top < threshold) {
-        this.navOpacity = 0.6 + (top / threshold) * 0.4
-      } else {
-        this.navOpacity = 1
+    watch: {
+      // 监听 Vuex 变化，实时更新头像
+      vuexUser: {
+        handler(newVal) {
+          if (newVal && newVal.avatar) {
+            this.userAvatar = newVal.avatar;
+          }
+        },
+        deep: true,
+        immediate: true
       }
-    },
-    created() {
-      this.setGreeting();
     },
     onShow() {
       this.loadData();
@@ -224,38 +240,89 @@
         else this.greeting = '晚上好，静心反省';
       },
       async loadData() {
-        const db = uniCloud.database();
-        const uid = uniCloud.getCurrentUserInfo().uid;
-        if (!uid) return;
+        // 检查是否真正登录（有有效的 token）
+        const token = uni.getStorageSync('uni_id_token');
+        if (!token) {
+          console.log('未登录，跳过数据加载');
+          return;
+        }
 
+        // 优先从 uniCloud 获取用户ID，如果没有再从本地存储获取
+        let uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+        if (!uid) {
+          // 尝试从 Vuex 获取
+          if (this.vuexUser && this.vuexUser.uid) {
+            uid = this.vuexUser.uid;
+          } else {
+            console.log('无法获取用户ID，跳过数据加载');
+            this.stats.days = 0;
+            this.stats.merit = 0;
+            this.stats.level = 1;
+            return;
+          }
+        }
+        
+        // 如果从 getCurrentUserInfo 获取到了 uid，保存到本地存储
+        if (uniCloud.getCurrentUserInfo().uid && !uni.getStorageSync('uni_id_user_uid')) {
+          uni.setStorageSync('uni_id_user_uid', uid);
+        }
+
+        const db = uniCloud.database();
+        
+        // 1. 获取用户信息中的统计数据（改用 water-api）
         try {
-           const userRes = await db.collection('uni-id-users')
-             .where('_id == $cloudEnv_uid')
-             .field('dao_profile,avatar')
-             .get();
+           const waterApi = uniCloud.importObject('water-api');
+           const res = await waterApi.getUserInfo({ uid });
            
-           if(userRes.result.data.length > 0) {
-             const user = userRes.result.data[0];
+           if(res.errCode === 0 && res.data) {
+             const user = res.data;
              this.userAvatar = user.avatar || '';
+             
+             // 更新 Vuex 中的头像，保持同步
+             if (user.avatar && (!this.vuexUser.avatar || this.vuexUser.avatar !== user.avatar)) {
+               this.$store.commit('$tStore', {
+                 name: 'vuex_user',
+                 value: {
+                   ...this.vuexUser,
+                   avatar: user.avatar
+                 }
+               });
+             }
+             
              if(user.dao_profile) {
                const p = user.dao_profile;
                this.stats.days = p.continuous_days || 0;
                this.stats.merit = p.total_merit || 0;
                this.stats.level = p.level || 1;
+               
+               // 计算等级名称
+               const levelNames = ['初入道门', '筑基初成', '开光境界', '融合之境', '心动大成', '金丹圆满'];
+               this.stats.level_name = levelNames[Math.min(this.stats.level - 1, levelNames.length - 1)] || '初入道门';
              }
            }
         } catch(e) {
           console.error('获取用户信息失败', e);
+          // 如果是匿名身份错误，清除token
+          if (e.message && e.message.indexOf('匿名') > -1) {
+            uni.removeStorageSync('uni_id_token');
+            uni.removeStorageSync('uni_id_token_expired');
+            uni.removeStorageSync('uni_id_user_uid');
+          }
         }
 
+        // 2. 检查今日打卡
         try {
           const now = new Date();
           const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-          const taskRes = await db.collection('daily_tasks')
-            .where(`date == "${dateStr}" && user_id == $cloudEnv_uid`)
-            .count();
-            
-          this.isTodayChecked = taskRes.result.total > 0;
+          const waterApi = uniCloud.importObject('water-api');
+          const taskRes = await waterApi.checkTodayTask({
+            date: dateStr,
+            user_id: uid
+          });
+          
+          if (taskRes.errCode === 0 && taskRes.data) {
+            this.isTodayChecked = taskRes.data.total > 0;
+          }
         } catch(e) {
           console.error('检查打卡失败', e);
         }

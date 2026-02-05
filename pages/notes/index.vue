@@ -136,15 +136,26 @@
         });
       },
       async loadNotes() {
-        const db = uniCloud.database();
+        const token = uni.getStorageSync('uni_id_token');
+        if (!token) {
+          this.notes = [];
+          return;
+        }
+        
+        const uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+        if (!uid) return;
+
         try {
-          const res = await db.collection('dao_notes')
-            .where('user_id == $cloudEnv_uid')
-            .orderBy('create_time', 'desc')
-            .get();
-          this.notes = res.result.data;
+          const waterApi = uniCloud.importObject('water-api');
+          const res = await waterApi.getNotes({ uid });
+          
+          if (res.errCode === 0) {
+            this.notes = res.data;
+          } else {
+            console.error('获取札记失败:', res.errMsg);
+          }
         } catch (e) {
-          console.error(e);
+          console.error('数据加载失败', e);
         }
       },
       formatDate(timestamp) {

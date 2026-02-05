@@ -112,6 +112,13 @@
       }
     },
     {
+      "path": "pages/mine/index",
+      "style": {
+        "navigationBarTitleText": "个人中心",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
       "path": "pages/mine/about",
       "style": {
         "navigationBarTitleText": "关于",
@@ -119,7 +126,7 @@
       }
     }
   ],
-  "subPackages": [{
+  "subPackages":[{
     "root":"homePages",
     "pages": []
   }],

@@ -59,7 +59,7 @@
         >
           <view class="goal-header">
             <view :class="['goal-category', categoryClass(goal.category)]">
-              <text :class="categoryIcon(goal.category)"></text>
+              <text :class="[categoryIcon(goal.category)]"></text>
               <text>{{ goal.category }}</text>
             </view>
             <view class="goal-progress-text">
@@ -75,7 +75,7 @@
           <view class="goal-progress-bar">
             <view 
               class="progress-fill" 
-              :class="categoryClass(goal.category)"
+              :class="[categoryClass(goal.category)]"
               :style="{width: calculateProgress(goal) + '%'}"
             ></view>
           </view>
@@ -141,14 +141,16 @@
         uni.navigateBack();
       },
       async loadData() {
-        const db = uniCloud.database();
         try {
-          const res = await db.collection('monthly_plans').doc(this.id).get();
-          if (res.result.data && res.result.data.length > 0) {
-            this.plan = res.result.data[0];
+          const waterApi = uniCloud.importObject('water-api');
+          const res = await waterApi.getMonthlyPlanDetail({ id: this.id });
+          if (res.errCode === 0 && res.data) {
+            this.plan = res.data;
+          } else {
+            console.error('获取计划详情失败', res);
           }
         } catch (e) {
-          console.error(e);
+          console.error('加载失败', e);
         }
       },
       statusText(status) {
@@ -191,16 +193,23 @@
         
         goal.completed_days++;
         
-        const db = uniCloud.database();
         try {
-          await db.collection('monthly_plans').doc(this.id).update({
+          const waterApi = uniCloud.importObject('water-api');
+          const res = await waterApi.updateMonthlyPlan({
+            id: this.id,
             goals: this.plan.goals,
-            update_time: db.command.set(Date.now())
+            update_time: Date.now()
           });
-          uni.showToast({ title: '打卡成功', icon: 'success' });
+          
+          if (res.errCode === 0) {
+            uni.showToast({ title: '打卡成功', icon: 'success' });
+          } else {
+            throw new Error(res.errMsg);
+          }
         } catch (e) {
           goal.completed_days--;
           uni.showToast({ title: '操作失败', icon: 'none' });
+          console.error(e);
         }
       },
       deletePlan() {
@@ -211,17 +220,23 @@
           success: async (res) => {
             if (res.confirm) {
               uni.showLoading({ title: '删除中' });
-              const db = uniCloud.database();
               try {
-                await db.collection('monthly_plans').doc(this.id).remove();
-                uni.hideLoading();
-                uni.showToast({ title: '已删除', icon: 'success' });
-                setTimeout(() => {
-                  uni.navigateBack();
-                }, 1500);
+                const waterApi = uniCloud.importObject('water-api');
+                const res = await waterApi.deleteMonthlyPlan({ id: this.id });
+                
+                if (res.errCode === 0) {
+                  uni.hideLoading();
+                  uni.showToast({ title: '已删除', icon: 'success' });
+                  setTimeout(() => {
+                    uni.navigateBack();
+                  }, 1500);
+                } else {
+                  throw new Error(res.errMsg);
+                }
               } catch (e) {
                 uni.hideLoading();
                 uni.showToast({ title: '删除失败', icon: 'none' });
+                console.error(e);
               }
             }
           }

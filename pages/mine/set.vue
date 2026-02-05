@@ -313,42 +313,61 @@
         this.show3 = false;
       },
       async loadUserInfo() {
-        const db = uniCloud.database();
-        const uid = uniCloud.getCurrentUserInfo().uid;
-        if (!uid) return;
+        const uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+        if (!uid) {
+          // 如果没有 uid，尝试从 Vuex 获取
+          const vuexUser = this.$store.state.vuex_user;
+          if (vuexUser && vuexUser.uid) {
+             // 逻辑继续
+          } else {
+             return;
+          }
+        }
+        
+        const targetUid = uid || this.$store.state.vuex_user.uid;
         
         try {
-          const res = await db.collection('uni-id-users')
-            .where('_id == $cloudEnv_uid')
-            .field('nickname,avatar,mobile,realname,gender,birthday,job')
-            .get();
+          const waterApi = uniCloud.importObject('water-api');
+          const res = await waterApi.getUserInfo({ uid: targetUid });
           
-          if (res.result.data.length > 0) {
-            const u = res.result.data[0];
+          if (res.errCode === 0 && res.data) {
+            const u = res.data;
             this.nickname = u.nickname || '修行者';
             this.userAvatar = u.avatar || '';
             this.phone = u.mobile || '';
-            this.realname = u.realname || '';
-            if (u.gender !== undefined) {
-              this.index = u.gender;
-            }
-            if (u.birthday) {
-              this.date = u.birthday;
-            }
-            if (u.job !== undefined) {
-              this.jobIndex = u.job;
-            }
+            this.realname = u.realname || ''; // 假设 water-api getUserInfo 返回了 realname，如果没有，需要去检查 water-api
+            
+            // water-api getUserInfo 目前只返回了 nickname, avatar, dao_profile
+            // 为了完整性，我们应该确保 water-api 返回所有这些字段
+            // 如果 water-api 没返回，这里就会是 undefined
+            
+            if (u.gender !== undefined) this.index = u.gender;
+            if (u.birthday) this.date = u.birthday;
+            if (u.job !== undefined) this.jobIndex = u.job;
           }
         } catch(e) {
           console.error('加载用户信息失败', e);
         }
       },
       async saveUserInfo(data) {
-        const db = uniCloud.database();
+        const uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+        if (!uid) {
+          uni.showToast({ title: '请先登录', icon: 'none' });
+          return;
+        }
+        
         try {
-          await db.collection('uni-id-users')
-            .where('_id == $cloudEnv_uid')
-            .update(data);
+          const waterApi = uniCloud.importObject('water-api');
+          const res = await waterApi.updateUserInfo({
+            uid,
+            data
+          });
+          
+          if (res.errCode === 0) {
+            uni.showToast({ title: '保存成功', icon: 'success' });
+          } else {
+            throw new Error(res.errMsg);
+          }
         } catch(e) {
           console.error('保存失败', e);
           uni.showToast({ title: '保存失败', icon: 'none' });

@@ -143,18 +143,46 @@
         this.loadPlans();
       },
       async loadPlans() {
-        const db = uniCloud.database();
+        // 检查是否真正登录（有有效的 token）
+        const token = uni.getStorageSync('uni_id_token');
+        if (!token) {
+          console.log('未登录，跳过数据加载');
+          return;
+        }
+        
+        // 优先从 uniCloud 获取用户ID，如果没有再从本地存储获取
+        let uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+        if (!uid) {
+          console.log('无法获取用户ID，跳过数据加载');
+          return;
+        }
+
+        // 如果从 getCurrentUserInfo 获取到了 uid，保存到本地存储
+        if (uniCloud.getCurrentUserInfo().uid && !uni.getStorageSync('uni_id_user_uid')) {
+          uni.setStorageSync('uni_id_user_uid', uid);
+          console.log('保存用户ID到本地存储:', uid);
+        }
+        
         const yearMonth = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
         
         try {
-          const res = await db.collection('monthly_plans')
-            .where(`year_month == "${yearMonth}" && user_id == $cloudEnv_uid`)
-            .get();
+          const waterApi = uniCloud.importObject('water-api');
+          const res = await waterApi.getMonthlyPlans({ uid, yearMonth });
           
-          this.plans = res.result.data;
-          this.calculateTotalProgress();
+          if (res.errCode === 0) {
+            this.plans = res.data;
+            this.calculateTotalProgress();
+          } else {
+            console.error('获取计划失败:', res.errMsg);
+            this.plans = [];
+          }
         } catch (e) {
-          console.error(e);
+          console.error('数据加载失败', e);
+          // 如果是匿名身份错误，清除token
+          if (e.message && e.message.indexOf('匿名') > -1) {
+            uni.removeStorageSync('uni_id_token');
+            uni.removeStorageSync('uni_id_token_expired');
+          }
         }
       },
       statusText(status) {

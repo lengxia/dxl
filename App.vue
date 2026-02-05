@@ -45,75 +45,92 @@ export default {
     // 登录逻辑封装
     const loginLogic = async () => {
       const uniIdCo = uniCloud.importObject("uni-id-co", { customUI: true });
-      const uid = uniCloud.getCurrentUserInfo().uid;
-
-      if (uid) {
-        console.log("当前已登录，UID:", uid);
-        return;
+      
+      // 检查本地是否有 token
+      const localToken = uni.getStorageSync('uni_id_token');
+      const tokenExpired = uni.getStorageSync('uni_id_token_expired');
+      const now = Date.now();
+      
+      // 如果有有效的 token，验证是否真实有效
+      if (localToken && tokenExpired && tokenExpired > now) {
+        console.log("本地存在 token，验证中...");
+        // 预检查 uid 是否存在
+        const localUid = uni.getStorageSync('uni_id_user_uid');
+        if (!localUid) {
+           console.log("本地 Token 存在但 UID 缺失，清除数据");
+           uni.removeStorageSync('uni_id_token');
+           uni.removeStorageSync('uni_id_token_expired');
+        } else {
+          try {
+            // 尝试获取用户信息来验证 token 是否有效
+            const checkResult = await loadUserInfo();
+            if (checkResult) {
+              console.log("Token 有效，用户已登录");
+              return;
+            }
+          } catch(e) {
+            console.log("Token 无效或已过期，清除本地数据");
+            uni.removeStorageSync('uni_id_token');
+            uni.removeStorageSync('uni_id_token_expired');
+            uni.removeStorageSync('uni_id_user_uid');
+          }
+        }
       }
 
-      console.log("当前未登录，开始尝试自动登录...");
-
-      // #ifdef MP-WEIXIN
-      // 微信小程序环境：优先尝试微信登录
-      uni.login({
-        provider: "weixin",
-        success: (res) => {
-          console.log("微信 code 获取成功:", res.code);
-          uniIdCo
-            .loginByWeixin({
-              code: res.code,
-            })
-            .then((loginRes) => {
-              console.log("微信登录成功:", loginRes);
-              // 这里可以触发 vuex 更新用户信息
-            })
-            .catch((err) => {
-              console.error("微信登录失败，尝试匿名登录兜底:", err);
-              // 微信登录失败（可能是云端未配置AppID），尝试匿名登录
-              anonymousLogin(uniIdCo);
-            });
-        },
-        fail: (err) => {
-          console.error("uni.login 接口调用失败:", err);
-          anonymousLogin(uniIdCo);
-        },
-      });
-      // #endif
+      console.log("未登录，等待用户授权...");
+      // 不自动登录，等待用户在个人中心点击授权
 
       // #ifndef MP-WEIXIN
-      // 非微信小程序环境：直接尝试匿名登录
-      anonymousLogin(uniIdCo);
+      console.log("非微信环境，无法登录");
       // #endif
     };
 
-    // 匿名登录辅助函数
-    const anonymousLogin = (uniIdCo) => {
-      console.log("正在尝试匿名登录...");
-      uniIdCo
-        .loginByAnonymous()
-        .then((res) => {
-          console.log("匿名登录成功:", res);
-          // 关键步骤：将 Token 存入本地存储，让 SDK 感知登录状态
-          if (res.token) {
-            uni.setStorageSync('uni_id_token', res.token);
-            uni.setStorageSync('uni_id_token_expired', res.tokenExpired);
-            // 同时也存入 vuex，方便应用内使用
-            store.commit('$tStore', {
-              name: 'vuex_user',
-              value: res.userInfo || { uid: res.uid }
-            });
-            console.log("Token 已保存，登录状态已激活");
-          }
-        })
-        .catch((err) => {
-          console.error("匿名登录失败:", err);
-          // 如果匿名登录也失败，说明云端可能未开启允许匿名，或者网络不通
-        });
+    // 加载用户信息
+    const loadUserInfo = async () => {
+      // 优先从 uniCloud 获取 uid，如果没有再从本地存储获取
+      let uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+      
+      if (!uid) {
+        console.log('UID 为空，跳过加载');
+        return false;
+      }
+      
+      // 如果从 getCurrentUserInfo 获取到了 uid，保存到本地存储
+      if (uniCloud.getCurrentUserInfo().uid) {
+        uni.setStorageSync('uni_id_user_uid', uid);
+      }
+      
+      try {
+        // 改用云对象调用，避免前端 DB 权限或 SDK 问题
+        const waterApi = uniCloud.importObject('water-api');
+        const res = await waterApi.getUserInfo({ uid });
+        
+        if(res.errCode === 0 && res.data) {
+          const u = res.data;
+          store.commit('$tStore', {
+            name: 'vuex_user',
+            value: {
+              uid: uid,
+              nickname: u.nickname || '修行者',
+              avatar: u.avatar || '',
+              isAnonymous: false
+            }
+          });
+          return true;
+        }
+        return false;
+      } catch(e) {
+        console.error('加载用户信息失败', e);
+        return false;
+      }
     };
 
     // 执行登录逻辑
     loginLogic();
+    
+    // #ifdef MP-WEIXIN
+    // 首次启动引导逻辑已迁移至 pages/index.vue 以实现 UI 美化
+    // #endif
 
     // #ifdef MP-WEIXIN
     //更新检测

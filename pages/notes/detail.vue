@@ -103,14 +103,16 @@
         uni.navigateBack();
       },
       async loadData() {
-        const db = uniCloud.database();
         try {
-          const res = await db.collection('dao_notes').doc(this.id).get();
-          if (res.result.data && res.result.data.length > 0) {
-            this.note = res.result.data[0];
+          const waterApi = uniCloud.importObject('water-api');
+          const res = await waterApi.getNoteDetail({ id: this.id });
+          if (res.errCode === 0 && res.data) {
+            this.note = res.data;
+          } else {
+            console.error('获取札记详情失败', res);
           }
         } catch (e) {
-          console.error(e);
+          console.error('加载失败', e);
         }
       },
       moodEmoji(mood) {
@@ -147,17 +149,23 @@
           success: async (res) => {
             if (res.confirm) {
               uni.showLoading({ title: '删除中' });
-              const db = uniCloud.database();
               try {
-                await db.collection('dao_notes').doc(this.id).remove();
-                uni.hideLoading();
-                uni.showToast({ title: '已删除', icon: 'success' });
-                setTimeout(() => {
-                  uni.navigateBack();
-                }, 1500);
+                const waterApi = uniCloud.importObject('water-api');
+                const res = await waterApi.deleteNote({ id: this.id });
+                
+                if (res.errCode === 0) {
+                  uni.hideLoading();
+                  uni.showToast({ title: '已删除', icon: 'success' });
+                  setTimeout(() => {
+                    uni.navigateBack();
+                  }, 1500);
+                } else {
+                  throw new Error(res.errMsg);
+                }
               } catch (e) {
                 uni.hideLoading();
                 uni.showToast({ title: '删除失败', icon: 'none' });
+                console.error(e);
               }
             }
           }

@@ -13,7 +13,27 @@
       <!-- 顶部背景 -->
       <view class="header-bg"></view>
       
-      <view class="page-content" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
+      <!-- 未登录状态 -->
+      <view class="page-content" :style="{paddingTop: vuex_custom_bar_height + 'px'}" v-if="!isLogin">
+        <view class="login-guide-card">
+          <view class="guide-icon">
+            <text class="tn-icon-wechat"></text>
+          </view>
+          <view class="guide-text">请登录以查看善行日记</view>
+          <tn-button 
+            shape="round" 
+            backgroundColor="#C9A86C" 
+            fontColor="#FFFFFF" 
+            width="280rpx"
+            shadow
+            @click="goBack"
+          >
+            去登录
+          </tn-button>
+        </view>
+      </view>
+
+      <view class="page-content" :style="{paddingTop: vuex_custom_bar_height + 'px'}" v-else>
         
         <!-- 统计概览卡片 -->
         <view class="stats-card">
@@ -100,7 +120,8 @@
         diaries: [],
         totalMerit: 0,
         totalCount: 0,
-        scrollTop: 0
+        scrollTop: 0,
+        isLogin: false
       }
     },
     computed: {
@@ -115,7 +136,12 @@
       this.scrollTop = e.scrollTop;
     },
     onShow() {
-      this.loadData();
+      const token = uni.getStorageSync('uni_id_token');
+      this.isLogin = !!token;
+      
+      if (this.isLogin) {
+        this.loadData();
+      }
     },
     methods: {
       goBack() {
@@ -132,15 +158,36 @@
         });
       },
       async loadData() {
-        const db = uniCloud.database();
+        // 检查是否真正登录（有有效的 token）
+        const token = uni.getStorageSync('uni_id_token');
+        if (!token) {
+          console.log('未登录，跳过数据加载');
+          return;
+        }
+        
+        // 优先从 uniCloud 获取用户ID，如果没有再从本地存储获取
+        let uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+        if (!uid) {
+          console.log('无法获取用户ID，跳过数据加载');
+          return;
+        }
+
+        // 如果从 getCurrentUserInfo 获取到了 uid，保存到本地存储
+        if (uniCloud.getCurrentUserInfo().uid && !uni.getStorageSync('uni_id_user_uid')) {
+          uni.setStorageSync('uni_id_user_uid', uid);
+          console.log('保存用户ID到本地存储:', uid);
+        }
         
         try {
-          const res = await db.collection('good_deeds')
-            .where('user_id == $cloudEnv_uid')
-            .orderBy('date', 'desc')
-            .get();
+          const waterApi = uniCloud.importObject('water-api');
+          const res = await waterApi.getDiaries({ uid });
           
-          this.diaries = res.result.data;
+          if (res.errCode === 0) {
+            this.diaries = res.data;
+          } else {
+            console.error('获取日记失败:', res.errMsg);
+            this.diaries = [];
+          }
           
           const monthPrefix = `${new Date().getFullYear()}-${String(this.currentMonth).padStart(2,'0')}`;
           
@@ -156,7 +203,12 @@
           this.totalCount = c;
           
         } catch (e) {
-          console.error(e);
+          console.error('数据加载失败', e);
+          // 如果是匿名身份错误，清除token
+          if (e.message && e.message.indexOf('匿名') > -1) {
+            uni.removeStorageSync('uni_id_token');
+            uni.removeStorageSync('uni_id_token_expired');
+          }
         }
       },
       typeGradient(type) {
@@ -234,6 +286,41 @@
     z-index: 1;
     padding: 30rpx;
     padding-bottom: 150rpx;
+  }
+  
+  // 登录引导
+  .login-guide-card {
+    background: #FFFFFF;
+    border-radius: 28rpx;
+    padding: 60rpx 40rpx;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 10rpx 50rpx rgba(0, 0, 0, 0.05);
+    margin-top: 40rpx;
+    
+    .guide-icon {
+      width: 120rpx;
+      height: 120rpx;
+      background: rgba(201, 168, 108, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 30rpx;
+      
+      text {
+        font-size: 60rpx;
+        color: $accent;
+      }
+    }
+    
+    .guide-text {
+      font-size: 30rpx;
+      color: $text;
+      margin-bottom: 40rpx;
+      font-weight: bold;
+    }
   }
 
   // 统计卡片

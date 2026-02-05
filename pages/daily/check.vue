@@ -312,6 +312,19 @@
         const now = new Date();
         const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         
+        // 优先从 uniCloud 获取用户ID，如果没有再从本地存储获取
+        let uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+        if (!uid) {
+          uni.showToast({ title: '请重新登录', icon: 'none' });
+          return;
+        }
+        
+        // 如果从 getCurrentUserInfo 获取到了 uid，保存到本地存储
+        if (uniCloud.getCurrentUserInfo().uid && !uni.getStorageSync('uni_id_user_uid')) {
+          uni.setStorageSync('uni_id_user_uid', uid);
+          console.log('保存用户ID到本地存储:', uid);
+        }
+        
         const bodyCheck = {
           ...this.form.body_check,
           water_cups: Number(this.form.body_check.water_cups),
@@ -326,33 +339,36 @@
 
         const data = {
           date: dateStr,
+          user_id: uid,
           mind_check: this.form.mind_check,
           body_check: bodyCheck,
           practice_check: practiceCheck,
           total_score: this.currentScore,
+          update_time: Date.now(),
+          create_time: Date.now(),
           notes: this.form.notes
         };
 
         uni.showLoading({ title: '记录中' });
-        const db = uniCloud.database();
-        try {
-          const checkRes = await db.collection('daily_tasks').where(`date == "${dateStr}" && user_id == $cloudEnv_uid`).get();
-          
-          if (checkRes.result.data.length > 0) {
-            const id = checkRes.result.data[0]._id;
-            await db.collection('daily_tasks').doc(id).update({
-              ...data,
-              update_time: db.command.set(Date.now())
-            });
-          } else {
-            await db.collection('daily_tasks').add(data);
-          }
-          
+        
+        if (!uid) {
           uni.hideLoading();
-          uni.showToast({ title: '功德圆满', icon: 'success' });
-          setTimeout(() => {
-            uni.navigateBack();
-          }, 1500);
+          uni.showToast({ title: '请重新登录', icon: 'none' });
+          return;
+        }
+        try {
+          const waterApi = uniCloud.importObject('water-api');
+          const res = await waterApi.submitDailyTask(data);
+          
+          if (res.errCode === 0) {
+            uni.hideLoading();
+            uni.showToast({ title: '功德圆满', icon: 'success' });
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
+          } else {
+            throw new Error(res.errMsg || '提交失败');
+          }
         } catch (e) {
           uni.hideLoading();
           console.error(e);

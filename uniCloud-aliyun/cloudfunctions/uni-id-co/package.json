@@ -1,13 +1,22 @@
 {
   "name": "uni-id-co",
-  "version": "1.0.0",
-  "description": "uni-id-co 云对象",
-  "main": "index.obj.js",
+  "version": "1.1.27",
+  "description": "",
+  "main": "index.js",
+  "keywords": [],
+  "author": "DCloud",
   "dependencies": {
-    "uni-id-common": "file:../../../../uni_modules/uni-id-common",
-    "uni-config-center": "file:../../../../uni_modules/uni-config-center"
+    "uni-id-common": "file:../../../uni_modules/uni-id-common/uniCloud/cloudfunctions/common/uni-id-common",
+    "uni-config-center": "file:../../../uni_modules/uni-config-center/uniCloud/cloudfunctions/common/uni-config-center"
   },
   "extensions": {
     "uni-cloud-jql": {}
-  }
+  },
+  "cloudfunction-config": {
+    "keepRunningAfterReturn": false
+  },
+  "origin-plugin-dev-name": "uni-id-pages",
+  "origin-plugin-version": "1.1.27",
+  "plugin-dev-name": "uni-starter",
+  "plugin-version": "2.2.14"
 }

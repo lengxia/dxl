@@ -1,0 +1,7 @@
+{
+  "name": "water-api",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

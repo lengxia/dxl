@@ -179,16 +179,25 @@
           images: [],
           is_private: false
         },
+        isLoggedIn: false,
         rules: {
           title: [{ required: true, message: '请输入标题' }],
           content: [{ required: true, message: '请输入内容' }]
         }
       }
     },
-    onReady() {
-      this.$refs.noteForm.setRules(this.rules);
-    },
+  onReady() {
+    this.$refs.noteForm.setRules(this.rules);
+  },
+  
+  onShow() {
+    this.checkLoginStatus();
+  },
     methods: {
+      async checkLoginStatus() {
+        this.isLoggedIn = await this.$uniID.checkLogin();
+      },
+      
       goBack() {
         uni.navigateBack();
       },
@@ -230,6 +239,23 @@
         return urls;
       },
       async submit() {
+        // 检查登录状态
+        const isLoggedIn = await this.$uniID.checkLogin();
+        if (!isLoggedIn) {
+          uni.showModal({
+            title: '提示',
+            content: '请先登录后再发布札记',
+            success: (res) => {
+              if (res.confirm) {
+                uni.navigateTo({
+                  url: '/pages/login/index'
+                });
+              }
+            }
+          });
+          return;
+        }
+
         if (!this.form.title) {
           uni.showToast({ title: '请输入标题', icon: 'none' });
           return;
@@ -257,20 +283,26 @@
             mood: this.form.mood,
             tags: tags,
             images: images,
-            is_private: this.form.is_private
+            is_private: this.form.is_private,
+            user_id: this.vuex_user.uid || uni.getStorageSync('uni_id_user_uid') // 使用 user_id
           };
 
-          const db = uniCloud.database();
-          await db.collection('dao_notes').add(data);
+          const waterApi = uniCloud.importObject('water-api');
+          const res = await waterApi.addNote(data);
           
-          uni.hideLoading();
-          uni.showToast({ title: '发布成功', icon: 'success' });
-          setTimeout(() => {
-            uni.navigateBack();
-          }, 1500);
+          if (res.errCode === 0) {
+            uni.hideLoading();
+            uni.showToast({ title: '发布成功', icon: 'success' });
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
+          } else {
+            throw new Error(res.errMsg);
+          }
         } catch (e) {
           uni.hideLoading();
           uni.showToast({ title: '发布失败', icon: 'none' });
+          console.error('发布失败:', e);
         }
       }
     }
