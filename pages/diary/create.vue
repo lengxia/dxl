@@ -181,6 +181,8 @@
   export default {
     data() {
       return {
+        editMode: false, // 是否为编辑模式
+        editId: '', // 编辑的记录ID
         showCalendar: false,
         types: ["助人", "爱物", "环保", "孝亲", "其他"],
         form: {
@@ -199,9 +201,16 @@
         }
       }
     },
-    onLoad() {
-      const now = new Date();
-      this.form.date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    onLoad(options) {
+      // 如果传入了 id 参数，说明是编辑模式
+      if (options.id) {
+        this.editMode = true;
+        this.editId = options.id;
+        this.loadExistingData(options.id);
+      } else {
+        const now = new Date();
+        this.form.date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+      }
     },
     onReady() {
       this.$refs.diaryForm.setRules(this.rules);
@@ -216,26 +225,69 @@
       onSliderChange(e) {
         this.form.merit_points = e.detail.value;
       },
+      // 加载已有的日记数据（编辑模式）
+      async loadExistingData(id) {
+        uni.showLoading({ title: '加载中...' });
+        
+        try {
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
+          const res = await waterApi.getDiaryDetail({ id });
+          
+          if (res.errCode === 0 && res.data) {
+            const data = res.data;
+            
+            // 回显数据到表单
+            this.form = {
+              date: data.date || '',
+              deed_type: data.deed_type || '助人',
+              title: data.title || '',
+              content: data.content || '',
+              intention: data.intention || '',
+              feeling: data.feeling || '',
+              merit_points: data.merit_points || 5,
+              is_public: data.is_public || false
+            };
+            
+            uni.hideLoading();
+          } else {
+            uni.hideLoading();
+            uni.showToast({ title: '加载失败', icon: 'none' });
+          }
+        } catch (e) {
+          uni.hideLoading();
+          uni.showToast({ title: '加载失败: ' + e.message, icon: 'none' });
+        }
+      },
       async submit() {
         if (!this.form.title) {
           uni.showToast({ title: '请输入事由', icon: 'none' });
           return;
         }
         
-        uni.showLoading({ title: '记录中' });
+        uni.showLoading({ title: this.editMode ? '更新中' : '记录中' });
         
         try {
-          const waterApi = uniCloud.importObject('water-api');
-          const data = {
-            ...this.form,
-            user_id: uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid')
-          };
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
           
-          const res = await waterApi.addDiary(data);
+          let res;
+          if (this.editMode) {
+            // 编辑模式：调用更新接口
+            res = await waterApi.updateDiary({
+              id: this.editId,
+              ...this.form
+            });
+          } else {
+            // 新增模式：调用添加接口
+            const data = {
+              ...this.form,
+              user_id: uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid')
+            };
+            res = await waterApi.addDiary(data);
+          }
           
           if (res.errCode === 0) {
             uni.hideLoading();
-            uni.showToast({ title: '记录成功', icon: 'success' });
+            uni.showToast({ title: this.editMode ? '更新成功' : '记录成功', icon: 'success' });
             setTimeout(() => {
               uni.navigateBack();
             }, 1500);
@@ -245,7 +297,6 @@
         } catch (e) {
           uni.hideLoading();
           uni.showToast({ title: '保存失败', icon: 'none' });
-          console.error('保存日记失败:', e);
         }
       }
     }

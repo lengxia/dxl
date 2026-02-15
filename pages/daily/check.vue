@@ -243,6 +243,8 @@
   export default {
     data() {
       return {
+        editMode: false, // 是否为编辑模式
+        editDate: '', // 编辑的日期
         form: {
           mind_check: {
             anxiety: false,
@@ -261,6 +263,14 @@
           },
           notes: ''
         }
+      }
+    },
+    onLoad(options) {
+      // 如果传入了 date 参数，说明是编辑模式
+      if (options.date) {
+        this.editMode = true;
+        this.editDate = options.date;
+        this.loadExistingData(options.date);
       }
     },
     computed: {
@@ -308,6 +318,55 @@
           this.form.practice_check.scripture_count = newVal;
         }
       },
+      // 加载已有的打卡数据（编辑模式）
+      async loadExistingData(date) {
+        const uid = uni.getStorageSync('uni_id_user_uid');
+        if (!uid) {
+          uni.showToast({ title: '请先登录', icon: 'none' });
+          return;
+        }
+                
+        try {
+          const waterApi = uniCloud.importObject('water-api');
+          const res = await waterApi.getDailyTask({
+            date,
+            uid
+          });
+          
+          if (res.errCode === 0 && res.data) {
+            const data = res.data;
+            
+            // 回显数据到表单
+            this.form.mind_check = data.mind_check || {
+              anxiety: false,
+              greed: false,
+              arrogance: false,
+              anger: false
+            };
+            
+            this.form.body_check = {
+              water_cups: data.body_check?.water_cups || 0,
+              stomach_status: data.body_check?.stomach_status || '舒适',
+              exercise_minutes: data.body_check?.exercise_minutes || 0
+            };
+            
+            this.form.practice_check = {
+              scripture_count: data.practice_check?.scripture_count || 0,
+              writing_words: data.practice_check?.writing_words || 0
+            };
+            
+            this.form.notes = data.notes || '';
+            
+            uni.hideLoading();
+          } else {
+            uni.hideLoading();
+            uni.showToast({ title: '加载失败', icon: 'none' });
+          }
+        } catch (e) {
+          uni.hideLoading();
+          uni.showToast({ title: '加载失败: ' + e.message, icon: 'none' });
+        }
+      },
       async submit() {
         const now = new Date();
         const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
@@ -322,7 +381,6 @@
         // 如果从 getCurrentUserInfo 获取到了 uid，保存到本地存储
         if (uniCloud.getCurrentUserInfo().uid && !uni.getStorageSync('uni_id_user_uid')) {
           uni.setStorageSync('uni_id_user_uid', uid);
-          console.log('保存用户ID到本地存储:', uid);
         }
         
         const bodyCheck = {
@@ -357,10 +415,16 @@
           return;
         }
         try {
-          const waterApi = uniCloud.importObject('water-api');
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
           const res = await waterApi.submitDailyTask(data);
           
           if (res.errCode === 0) {
+            // 更新全局状态，通知首页刷新
+            this.$store.commit('$tStore', {
+              name: 'last_daily_tasks',
+              value: dateStr
+            });
+            
             uni.hideLoading();
             uni.showToast({ title: '功德圆满', icon: 'success' });
             setTimeout(() => {

@@ -16,7 +16,7 @@
       <view class="settings-card">
         <view class="card-title">个人资料</view>
         
-        <view class="setting-item" @click="tn('/pages/mine/avatar')">
+        <view class="setting-item" @click="handleAvatarClick">
           <view class="item-left">
             <view class="item-icon" style="background: linear-gradient(135deg, #3D8B8F, #5AABAD);">
               <text class="tn-icon-my-fill"></text>
@@ -29,7 +29,7 @@
           <view class="item-right">
             <view class="avatar-preview">
               <image 
-                :src="userAvatar || '/static/logo.png'" 
+                :src="vuexUser.avatar || '/static/logo.png'" 
                 class="avatar-img"
                 mode="aspectFill"
               />
@@ -40,14 +40,14 @@
         
         <view class="item-divider"></view>
         
-        <view class="setting-item" @click="showModal1">
+        <view class="setting-item" @click="showModal('nickname')">
           <view class="item-left">
             <view class="item-icon" style="background: linear-gradient(135deg, #C9A86C, #D4B87A);">
               <text class="tn-icon-edit"></text>
             </view>
             <view class="item-info">
               <view class="item-label">用户昵称</view>
-              <view class="item-desc">{{ nickname || '点击设置昵称' }}</view>
+              <view class="item-desc">{{ vuexUser.nickname || '点击设置昵称' }}</view>
             </view>
           </view>
           <view class="item-right">
@@ -57,14 +57,14 @@
         
         <view class="item-divider"></view>
         
-        <view class="setting-item" @click="showModal2">
+        <view class="setting-item" @click="showModal('phone')">
           <view class="item-left">
             <view class="item-icon" style="background: linear-gradient(135deg, #7B68EE, #9B8AFF);">
               <text class="tn-icon-call-fill"></text>
             </view>
             <view class="item-info">
               <view class="item-label">绑定手机号</view>
-              <view class="item-desc">{{ phone || '未绑定' }}</view>
+              <view class="item-desc">{{ vuexUser.mobile || '未绑定' }}</view>
             </view>
           </view>
           <view class="item-right">
@@ -77,14 +77,14 @@
       <view class="settings-card">
         <view class="card-title">基本信息</view>
         
-        <view class="setting-item" @click="showModal3">
+        <view class="setting-item" @click="showModal('realname')">
           <view class="item-left">
             <view class="item-icon" style="background: linear-gradient(135deg, #E07A5F, #F09A7F);">
               <text class="tn-icon-medal-fill"></text>
             </view>
             <view class="item-info">
               <view class="item-label">姓名</view>
-              <view class="item-desc">{{ realname || '未填写' }}</view>
+              <view class="item-desc">{{ vuexUser.realname || '未填写' }}</view>
             </view>
           </view>
           <view class="item-right">
@@ -94,7 +94,7 @@
         
         <view class="item-divider"></view>
         
-        <picker @change="bindPickerChange" :value="index" :range="genderArray">
+        <picker @change="bindPickerChange" :value="genderIndex" :range="genderArray">
           <view class="setting-item">
             <view class="item-left">
               <view class="item-icon" style="background: linear-gradient(135deg, #26A69A, #4DB6AC);">
@@ -102,7 +102,7 @@
               </view>
               <view class="item-info">
                 <view class="item-label">性别</view>
-                <view class="item-desc">{{ genderArray[index] }}</view>
+                <view class="item-desc">{{ genderArray[genderIndex] }}</view>
               </view>
             </view>
             <view class="item-right">
@@ -113,7 +113,7 @@
         
         <view class="item-divider"></view>
         
-        <picker @change="bindDateChange" mode="date" :value="date" :start="startDate" :end="endDate">
+        <picker @change="bindDateChange" mode="date" :value="birthday" :start="startDate" :end="endDate">
           <view class="setting-item">
             <view class="item-left">
               <view class="item-icon" style="background: linear-gradient(135deg, #FF7043, #FF8A65);">
@@ -121,7 +121,7 @@
               </view>
               <view class="item-info">
                 <view class="item-label">生日</view>
-                <view class="item-desc">{{ date }}</view>
+                <view class="item-desc">{{ birthday }}</view>
               </view>
             </view>
             <view class="item-right">
@@ -150,79 +150,45 @@
         </picker>
       </view>
       
-      <!-- 修改昵称弹窗 -->
-      <tn-modal v-model="show1" :custom="true" :showCloseBtn="true">
+      <!-- 通用修改弹窗 -->
+      <tn-modal v-model="showModalVisible" :custom="true" :showCloseBtn="true">
         <view class="modal-content">
-          <view class="modal-title">修改昵称</view>
-          <view class="modal-input-wrap">
-            <input 
-              v-model="tempNickname"
-              placeholder="请输入昵称" 
-              placeholder-style="color:#B2BEC3"
-              maxlength="20"
-            />
-          </view>
-          <view class="modal-btn">
-            <tn-button 
-              backgroundColor="#3D8B8F" 
-              fontColor="#FFFFFF"
-              shape="round"
-              width="60%"
-              shadow
-              @click="saveNickname"
-            >
-              保存
-            </tn-button>
-          </view>
-        </view>
-      </tn-modal>
-      
-      <!-- 修改手机号弹窗 -->
-      <tn-modal v-model="show2" :custom="true" :showCloseBtn="true">
-        <view class="modal-content">
-          <view class="modal-title">绑定手机号</view>
-          <view class="modal-desc">{{ phone || '暂未绑定手机号' }}</view>
-          <view class="modal-btn">
-            <tn-button 
-              backgroundColor="#3D8B8F" 
-              fontColor="#FFFFFF"
-              shape="round"
-              width="60%"
-              shadow
-            >
-              获取手机号
-            </tn-button>
-          </view>
-          <view class="modal-hint">
-            注：获取手机号API收费，此功能需自行配置
-          </view>
-        </view>
-      </tn-modal>
-      
-      <!-- 修改姓名弹窗 -->
-      <tn-modal v-model="show3" :custom="true" :showCloseBtn="true">
-        <view class="modal-content">
-          <view class="modal-title">填写姓名</view>
-          <view class="modal-input-wrap">
-            <input 
-              v-model="tempRealname"
-              placeholder="请输入真实姓名" 
-              placeholder-style="color:#B2BEC3"
-              maxlength="20"
-            />
-          </view>
-          <view class="modal-btn">
-            <tn-button 
-              backgroundColor="#3D8B8F" 
-              fontColor="#FFFFFF"
-              shape="round"
-              width="60%"
-              shadow
-              @click="saveRealname"
-            >
-              保存
-            </tn-button>
-          </view>
+          <view class="modal-title">{{ modalTitle }}</view>
+          
+          <!-- 手机号特殊展示 -->
+          <block v-if="currentModalType === 'phone'">
+             <view class="modal-desc">{{ vuexUser.mobile || '暂未绑定手机号' }}</view>
+             <view class="modal-btn">
+                <tn-button backgroundColor="#3D8B8F" fontColor="#FFFFFF" shape="round" width="60%" shadow>
+                  获取手机号
+                </tn-button>
+             </view>
+             <view class="modal-hint">注：获取手机号API收费，此功能需自行配置</view>
+          </block>
+
+          <!-- 文本输入 -->
+          <block v-else>
+             <view class="modal-input-wrap">
+               <input 
+                 v-model="tempValue"
+                 :placeholder="modalPlaceholder" 
+                 placeholder-style="color:#B2BEC3"
+                 maxlength="20"
+               />
+             </view>
+             <view class="modal-btn">
+               <tn-button 
+                 backgroundColor="#3D8B8F" 
+                 fontColor="#FFFFFF"
+                 shape="round"
+                 width="60%"
+                 shadow
+                 @click="saveValue"
+               >
+                 保存
+               </tn-button>
+             </view>
+          </block>
         </view>
       </tn-modal>
       
@@ -231,160 +197,168 @@
 </template>
 
 <script>
+  import { checkLogin, updateUserProfile } from '@/libs/auth'
+
   export default {
     name: 'Settings',
     data(){
       return {
-        show1: false,
-        show2: false,
-        show3: false,
-        nickname: '修行者',
-        tempNickname: '',
-        phone: '',
-        realname: '',
-        tempRealname: '',
-        userAvatar: '',
-        index: 2,
+        // 弹窗控制
+        showModalVisible: false,
+        currentModalType: '', // nickname, realname, phone
+        tempValue: '',
+        
+        // Picker 数据源
         genderArray: ['女', '男', '保密'],
-        date: '2000-01-01',
+        jobArray: ['计算机/互联网', '教育/培训', '医疗/健康', '金融/财务', '自由职业', '其他'],
+        
+        // Picker 选中状态（需要从 Vuex 同步）
+        genderIndex: 2,
         jobIndex: 0,
-        jobArray: ['计算机/互联网', '教育/培训', '医疗/健康', '金融/财务', '自由职业', '其他']
+        birthday: '2000-01-01',
       }
     },
     onShow() {
-      this.loadUserInfo();
+      this.initData();
     },
     computed: {
-      startDate() {
-        return this.getDate('start');
+      startDate() { return this.getDate('start'); },
+      endDate() { return this.getDate('end'); },
+      vuexUser() { return this.$store.state.vuex_user || {}; },
+      
+      // 动态计算弹窗标题
+      modalTitle() {
+        const map = { nickname: '修改昵称', realname: '填写姓名', phone: '绑定手机号' };
+        return map[this.currentModalType] || '';
       },
-      endDate() {
-        return this.getDate('end');
+      modalPlaceholder() {
+        const map = { nickname: '请输入昵称', realname: '请输入真实姓名' };
+        return map[this.currentModalType] || '';
+      }
+    },
+    watch: {
+      // 仅同步 Picker 相关的索引状态
+      vuexUser: {
+        handler(u) {
+          if (u) {
+            if (u.gender !== undefined) this.genderIndex = u.gender;
+            if (u.birthday) this.birthday = u.birthday;
+            if (u.job !== undefined) this.jobIndex = u.job;
+          }
+        },
+        immediate: true,
+        deep: true
       }
     },
     methods: {
+      async initData() {
+        await checkLogin().catch(() => {});
+      },
       goBack() {
-        const pages = getCurrentPages()
+        // 统一返回逻辑
+        const pages = getCurrentPages();
         if (pages && pages.length > 0) {
-          const firstPage = pages[0]
+          const firstPage = pages[0];
           if (pages.length == 1 && (!firstPage.route || firstPage.route != 'pages/index')) {
-            uni.reLaunch({
-              url: '/pages/index'
-            })
+            uni.reLaunch({ url: '/pages/index' });
           } else {
-            uni.navigateBack({
-              delta: 1
-            })
+            uni.navigateBack({ delta: 1 });
           }
         } else {
-          uni.reLaunch({
-            url: '/pages/index'
-          })
+          uni.reLaunch({ url: '/pages/index' });
         }
       },
-      tn(e) {
-        uni.navigateTo({
-          url: e,
+      tn(url) {
+        uni.navigateTo({ url });
+      },
+
+      // 处理头像点击
+      handleAvatarClick() {
+        // 已登录用户可以更换头像
+        uni.chooseImage({
+          count: 1,
+          sizeType: ['compressed'],
+          sourceType: ['album', 'camera'],
+          success: (res) => {
+            this.uploadAvatar(res.tempFilePaths[0]);
+          }
         });
       },
-      showModal1() {
-        this.tempNickname = this.nickname;
-        this.show1 = true;
-      },
-      showModal2() {
-        this.show2 = true;
-      },
-      showModal3() {
-        this.tempRealname = this.realname;
-        this.show3 = true;
-      },
-      async saveNickname() {
-        if (this.tempNickname.trim()) {
-          this.nickname = this.tempNickname.trim();
-          await this.saveUserInfo({ nickname: this.nickname });
-        }
-        this.show1 = false;
-      },
-      async saveRealname() {
-        if (this.tempRealname.trim()) {
-          this.realname = this.tempRealname.trim();
-          await this.saveUserInfo({ realname: this.realname });
-        }
-        this.show3 = false;
-      },
-      async loadUserInfo() {
-        const uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
-        if (!uid) {
-          // 如果没有 uid，尝试从 Vuex 获取
-          const vuexUser = this.$store.state.vuex_user;
-          if (vuexUser && vuexUser.uid) {
-             // 逻辑继续
-          } else {
-             return;
-          }
-        }
-        
-        const targetUid = uid || this.$store.state.vuex_user.uid;
+
+      // 上传头像
+      async uploadAvatar(filePath) {
+        uni.showLoading({ title: '上传中...' });
         
         try {
-          const waterApi = uniCloud.importObject('water-api');
-          const res = await waterApi.getUserInfo({ uid: targetUid });
-          
-          if (res.errCode === 0 && res.data) {
-            const u = res.data;
-            this.nickname = u.nickname || '修行者';
-            this.userAvatar = u.avatar || '';
-            this.phone = u.mobile || '';
-            this.realname = u.realname || ''; // 假设 water-api getUserInfo 返回了 realname，如果没有，需要去检查 water-api
-            
-            // water-api getUserInfo 目前只返回了 nickname, avatar, dao_profile
-            // 为了完整性，我们应该确保 water-api 返回所有这些字段
-            // 如果 water-api 没返回，这里就会是 undefined
-            
-            if (u.gender !== undefined) this.index = u.gender;
-            if (u.birthday) this.date = u.birthday;
-            if (u.job !== undefined) this.jobIndex = u.job;
-          }
-        } catch(e) {
-          console.error('加载用户信息失败', e);
-        }
-      },
-      async saveUserInfo(data) {
-        const uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
-        if (!uid) {
-          uni.showToast({ title: '请先登录', icon: 'none' });
-          return;
-        }
-        
-        try {
-          const waterApi = uniCloud.importObject('water-api');
-          const res = await waterApi.updateUserInfo({
-            uid,
-            data
+          // 内部辅助：上传文件到云存储
+          const result = await uniCloud.uploadFile({
+            filePath: filePath,
+            cloudPath: `avatar/${Date.now()}_${Math.random().toString(36).substr(2)}.jpg`
           });
           
-          if (res.errCode === 0) {
-            uni.showToast({ title: '保存成功', icon: 'success' });
-          } else {
-            throw new Error(res.errMsg);
-          }
+          // 使用 auth.js 统一接口更新头像
+          await updateUserProfile({
+            avatar: result.fileID
+          })
+          
+          uni.hideLoading();
+          uni.showToast({ title: '头像更新成功', icon: 'success' });
         } catch(e) {
-          console.error('保存失败', e);
-          uni.showToast({ title: '保存失败', icon: 'none' });
+          uni.hideLoading();
+          uni.showToast({ title: e.message || '上传失败', icon: 'none' });
         }
       },
+      
+      // 统一弹窗处理
+      showModal(type) {
+        this.currentModalType = type;
+        if (type === 'nickname') this.tempValue = this.vuexUser.nickname || '';
+        if (type === 'realname') this.tempValue = this.vuexUser.realname || '';
+        this.showModalVisible = true;
+      },
+      
+      async saveValue() {
+        if (!this.tempValue.trim()) {
+           this.showModalVisible = false;
+           return;
+        }
+        
+        const value = this.tempValue.trim();
+        const data = {};
+        
+        if (this.currentModalType === 'nickname') data.nickname = value;
+        if (this.currentModalType === 'realname') data.realname = value;
+        
+        this.showModalVisible = false;
+        await this.saveUserInfo(data);
+      },
+
+      async saveUserInfo(data) {
+        try {
+          await updateUserProfile(data);
+          uni.showToast({ title: '保存成功', icon: 'success' });
+        } catch(e) {
+          if (e.message === '未登录') {
+             uni.showToast({ title: '请先登录', icon: 'none' });
+          } else {
+             uni.showToast({ title: e.message || '保存失败', icon: 'none' });
+          }
+        }
+      },
+      
       bindPickerChange(e) {
-        this.index = Number(e.detail.value);
-        this.saveUserInfo({ gender: this.index });
+        this.genderIndex = Number(e.detail.value);
+        this.saveUserInfo({ gender: this.genderIndex });
       },
       bindJobChange(e) {
         this.jobIndex = Number(e.detail.value);
         this.saveUserInfo({ job: this.jobIndex });
       },
       bindDateChange(e) {
-        this.date = e.detail.value;
-        this.saveUserInfo({ birthday: this.date });
+        this.birthday = e.detail.value;
+        this.saveUserInfo({ birthday: this.birthday });
       },
+      
       getDate(type) {
         const date = new Date();
         let year = date.getFullYear();
@@ -405,10 +379,7 @@
 </script>
 
 <style lang="scss" scoped>
-  // 道心录配色
   $primary: #3D8B8F;
-  $primary-light: #5AABAD;
-  $accent: #C9A86C;
   $bg: #F7F5F0;
   $card-bg: #FFFEFB;
   $text: #2D3436;
@@ -432,7 +403,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      
       text {
         font-size: 36rpx;
         color: $text;
@@ -451,7 +421,6 @@
     padding-top: 20rpx;
   }
 
-  // 设置卡片
   .settings-card {
     background: $card-bg;
     border-radius: 24rpx;
@@ -488,7 +457,6 @@
     align-items: center;
     justify-content: center;
     margin-right: 24rpx;
-    
     text {
       font-size: 34rpx;
       color: #FFFFFF;
@@ -497,14 +465,12 @@
   
   .item-info {
     flex: 1;
-    
     .item-label {
       font-size: 30rpx;
       font-weight: 500;
       color: $text;
       margin-bottom: 6rpx;
     }
-    
     .item-desc {
       font-size: 24rpx;
       color: $text-hint;
@@ -514,7 +480,6 @@
   .item-right {
     display: flex;
     align-items: center;
-    
     text {
       font-size: 28rpx;
       color: $text-hint;
@@ -527,7 +492,6 @@
     border-radius: 50%;
     overflow: hidden;
     margin-right: 16rpx;
-    
     .avatar-img {
       width: 100%;
       height: 100%;
@@ -540,7 +504,6 @@
     margin-left: 94rpx;
   }
 
-  // 弹窗样式
   .modal-content {
     padding: 40rpx;
     text-align: center;
@@ -564,7 +527,6 @@
     border-radius: 16rpx;
     padding: 24rpx 30rpx;
     margin-bottom: 40rpx;
-    
     input {
       font-size: 30rpx;
       color: $text;

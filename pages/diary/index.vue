@@ -113,15 +113,15 @@
 </template>
 
 <script>
+  import { checkLogin, getCurrentUid } from '@/libs/auth.js';
+
   export default {
     data() {
       return {
-        currentMonth: new Date().getMonth() + 1,
         diaries: [],
-        totalMerit: 0,
-        totalCount: 0,
         scrollTop: 0,
-        isLogin: false
+        isLogin: false,
+        lastLoadTime: 0  // 添加节流时间戳
       }
     },
     computed: {
@@ -130,14 +130,28 @@
       },
       navTextColor() {
         return this.scrollTop > 50 ? '#2D3436' : '#FFFFFF';
+      },
+      totalMerit() {
+        return this.diaries.reduce((sum, d) => sum + (d.merit_points || 0), 0);
+      },
+      totalCount() {
+        return this.diaries.length;
+      },
+      currentMonth() {
+        return new Date().getMonth() + 1;
       }
     },
     onPageScroll(e) {
       this.scrollTop = e.scrollTop;
     },
     onShow() {
-      const token = uni.getStorageSync('uni_id_token');
-      this.isLogin = !!token;
+      // 节流：5秒内不重复加载
+      const now = Date.now();
+      if (now - this.lastLoadTime < 5000) {
+        return;
+      }
+      
+      this.isLogin = checkLogin();
       
       if (this.isLogin) {
         this.loadData();
@@ -158,52 +172,36 @@
         });
       },
       async loadData() {
-        // 检查是否真正登录（有有效的 token）
-        const token = uni.getStorageSync('uni_id_token');
-        if (!token) {
-          console.log('未登录，跳过数据加载');
+        if (!checkLogin()) {
+          this.isLogin = false;
           return;
         }
         
-        // 优先从 uniCloud 获取用户ID，如果没有再从本地存储获取
-        let uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+        const uid = getCurrentUid();
         if (!uid) {
-          console.log('无法获取用户ID，跳过数据加载');
           return;
-        }
-
-        // 如果从 getCurrentUserInfo 获取到了 uid，保存到本地存储
-        if (uniCloud.getCurrentUserInfo().uid && !uni.getStorageSync('uni_id_user_uid')) {
-          uni.setStorageSync('uni_id_user_uid', uid);
-          console.log('保存用户ID到本地存储:', uid);
         }
         
         try {
-          const waterApi = uniCloud.importObject('water-api');
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
           const res = await waterApi.getDiaries({ uid });
           
           if (res.errCode === 0) {
             this.diaries = res.data;
+            this.lastLoadTime = Date.now();  // 更新加载时间
           } else {
-            console.error('获取日记失败:', res.errMsg);
             this.diaries = [];
           }
-          
-          const monthPrefix = `${new Date().getFullYear()}-${String(this.currentMonth).padStart(2,'0')}`;
-          
-          let m = 0;
-          let c = 0;
-          this.diaries.forEach(d => {
-            if (d.date.startsWith(monthPrefix)) {
-              m += d.merit_points;
-              c += 1;
-            }
-          });
-          this.totalMerit = m;
-          this.totalCount = c;
-          
         } catch (e) {
-          console.error('数据加载失败', e);
+          // 数据库资源耗尽错误
+          if (e.message && e.message.indexOf('resource exhausted') > -1) {
+            uni.showToast({ 
+              title: '服务器繁忙，请稍后再试', 
+              icon: 'none',
+              duration: 2000
+            });
+            return;
+          }
           // 如果是匿名身份错误，清除token
           if (e.message && e.message.indexOf('匿名') > -1) {
             uni.removeStorageSync('uni_id_token');

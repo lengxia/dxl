@@ -100,11 +100,14 @@
 </template>
 
 <script>
+  import { checkLogin, getCurrentUid } from '@/libs/auth.js';
+
   export default {
     data() {
       return {
         notes: [],
-        scrollTop: 0
+        scrollTop: 0,
+        lastLoadTime: 0  // 添加节流时间戳
       }
     },
     computed: {
@@ -119,7 +122,17 @@
       this.scrollTop = e.scrollTop;
     },
     onShow() {
-      this.loadNotes();
+      // 节流：5秒内不重复加载
+      const now = Date.now();
+      if (now - this.lastLoadTime < 5000) {
+        return;
+      }
+      
+      if (checkLogin()) {
+        this.loadNotes();
+      } else {
+        this.notes = [];
+      }
     },
     methods: {
       goBack() {
@@ -136,26 +149,37 @@
         });
       },
       async loadNotes() {
-        const token = uni.getStorageSync('uni_id_token');
-        if (!token) {
+        if (!checkLogin()) {
           this.notes = [];
           return;
         }
         
-        const uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
-        if (!uid) return;
-
+        const uid = getCurrentUid();
+        if (!uid) {
+          return;
+        }
+        
         try {
-          const waterApi = uniCloud.importObject('water-api');
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
           const res = await waterApi.getNotes({ uid });
           
           if (res.errCode === 0) {
             this.notes = res.data;
+            this.lastLoadTime = Date.now();  // 更新加载时间
           } else {
-            console.error('获取札记失败:', res.errMsg);
+            this.notes = [];
           }
         } catch (e) {
-          console.error('数据加载失败', e);
+          // 数据库资源耗尽错误
+          if (e.message && e.message.indexOf('resource exhausted') > -1) {
+            uni.showToast({ 
+              title: '服务器繁忙，请稍后再试', 
+              icon: 'none',
+              duration: 2000
+            });
+            return;
+          }
+          // 数据加载失败
         }
       },
       formatDate(timestamp) {

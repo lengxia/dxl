@@ -157,11 +157,12 @@
     </view>
   </view>
 </template>
-
 <script>
   export default {
     data() {
       return {
+        editMode: false, // 是否为编辑模式
+        editId: '', // 编辑的记录ID
         moodOptions: [
           { name: '平和', emoji: '😌' },
           { name: '喜悦', emoji: '😊' },
@@ -186,6 +187,14 @@
         }
       }
     },
+  onLoad(options) {
+    // 如果传入了 id 参数，说明是编辑模式
+    if (options.id) {
+      this.editMode = true;
+      this.editId = options.id;
+      this.loadExistingData(options.id);
+    }
+  },
   onReady() {
     this.$refs.noteForm.setRules(this.rules);
   },
@@ -200,6 +209,39 @@
       
       goBack() {
         uni.navigateBack();
+      },
+      // 加载已有的札记数据（编辑模式）
+      async loadExistingData(id) {
+        uni.showLoading({ title: '加载中...' });
+        
+        try {
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
+          const res = await waterApi.getNoteDetail({ id });
+          
+          if (res.errCode === 0 && res.data) {
+            const data = res.data;
+            
+            // 回显数据到表单
+            this.form = {
+              title: data.title || '',
+              content: data.content || '',
+              mood: data.mood || '平和',
+              tags_str: data.tags ? data.tags.join(',') : '',
+              images: data.images || [],
+              is_private: data.is_private || false
+            };
+            
+            // 回显图片列表
+            this.imageList = data.images || [];
+            
+            uni.hideLoading();
+          } else {
+            throw new Error(res.errMsg || '加载失败');
+          }
+        } catch (e) {
+          uni.hideLoading();
+          uni.showToast({ title: '加载失败', icon: 'none' });
+        }
       },
       addQuickTag(tag) {
         if (this.form.tags_str) {
@@ -233,7 +275,7 @@
             });
             urls.push(res.fileID);
           } catch (e) {
-            console.error('上传失败', e);
+            // 上传失败
           }
         }
         return urls;
@@ -271,10 +313,24 @@
           // 处理标签
           const tags = this.form.tags_str.split(/[,，\s]+/).filter(t => t.trim() !== '');
           
-          // 上传图片
+          // 上传新图片（只上传本地路径的图片）
           let images = [];
-          if (this.imageList.length > 0) {
-            images = await this.uploadImages();
+          for (let path of this.imageList) {
+            if (path.startsWith('http') || path.startsWith('cloud://')) {
+              // 已经是云端图片，直接保留
+              images.push(path);
+            } else {
+              // 本地图片需要上传
+              try {
+                const res = await uniCloud.uploadFile({
+                  filePath: path,
+                  cloudPath: `notes/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`
+                });
+                images.push(res.fileID);
+              } catch (e) {
+                // 上传失败
+              }
+            }
           }
           
           const data = {
@@ -283,16 +339,26 @@
             mood: this.form.mood,
             tags: tags,
             images: images,
-            is_private: this.form.is_private,
-            user_id: this.vuex_user.uid || uni.getStorageSync('uni_id_user_uid') // 使用 user_id
+            is_private: this.form.is_private
           };
 
-          const waterApi = uniCloud.importObject('water-api');
-          const res = await waterApi.addNote(data);
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
+          let res;
+          
+          if (this.editMode) {
+            // 编辑模式：调用更新接口
+            data.id = this.editId;
+            data.update_time = Date.now();
+            res = await waterApi.updateNote(data);
+          } else {
+            // 新建模式：调用添加接口
+            data.user_id = this.vuex_user.uid || uni.getStorageSync('uni_id_user_uid');
+            res = await waterApi.addNote(data);
+          }
           
           if (res.errCode === 0) {
             uni.hideLoading();
-            uni.showToast({ title: '发布成功', icon: 'success' });
+            uni.showToast({ title: this.editMode ? '修改成功' : '发布成功', icon: 'success' });
             setTimeout(() => {
               uni.navigateBack();
             }, 1500);
@@ -301,8 +367,7 @@
           }
         } catch (e) {
           uni.hideLoading();
-          uni.showToast({ title: '发布失败', icon: 'none' });
-          console.error('发布失败:', e);
+          uni.showToast({ title: this.editMode ? '修改失败' : '发布失败', icon: 'none' });
         }
       }
     }

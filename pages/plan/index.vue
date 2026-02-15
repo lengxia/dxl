@@ -84,19 +84,19 @@
       <text class="tn-icon-add"></text>
     </view>
     
-    <!-- 日历弹窗 -->
-    <tn-calendar 
+    <!-- 时间选择器（年月） -->
+    <tn-picker 
       v-model="showCalendar" 
-      mode="date"
-      :changeYear="true" 
-      :changeMonth="true"
-      activeBgColor="#E07A5F" 
-      @change="onDateChange"
-    ></tn-calendar>
+      mode="time" 
+      :params="{year: true, month: true, day: false}" 
+      @confirm="onDateChange"
+    ></tn-picker>
   </view>
 </template>
 
 <script>
+  import { checkLogin, getCurrentUid } from '@/libs/auth.js';
+
   export default {
     data() {
       return {
@@ -105,7 +105,8 @@
         currentMonth: new Date().getMonth() + 1,
         plans: [],
         progress: 0,
-        scrollTop: 0
+        scrollTop: 0,
+        lastLoadTime: 0  // 添加上次加载时间戳
       }
     },
     computed: {
@@ -120,7 +121,18 @@
       this.scrollTop = e.scrollTop;
     },
     onShow() {
-      this.loadPlans();
+      // 节流：5秒内不重复加载
+      const now = Date.now();
+      if (now - this.lastLoadTime < 5000) {
+        return;
+      }
+      
+      if (checkLogin()) {
+        this.loadPlans();
+      } else {
+        this.plans = [];
+        this.progress = 0;
+      }
     },
     methods: {
       goBack() {
@@ -132,52 +144,62 @@
         });
       },
       goDetail(id) {
+        console.log('跳转详情，ID:', id);
+        if (!id) {
+          uni.showToast({ title: 'ID为空', icon: 'none' });
+          return;
+        }
         uni.navigateTo({
-          url: '/pages/plan/detail?id=' + id
+          url: '/pages/plan/detail?id=' + id,
+          fail: (err) => {
+            console.error('跳转失败:', err);
+            uni.showToast({ title: '跳转失败', icon: 'none' });
+          }
         });
       },
       onDateChange(e) {
-        const date = new Date(e.result);
-        this.currentYear = date.getFullYear();
-        this.currentMonth = date.getMonth() + 1;
+        // tn-picker 的时间模式返回 {year, month}
+        this.currentYear = e.year;
+        this.currentMonth = e.month;
         this.loadPlans();
       },
       async loadPlans() {
-        // 检查是否真正登录（有有效的 token）
-        const token = uni.getStorageSync('uni_id_token');
-        if (!token) {
-          console.log('未登录，跳过数据加载');
+        if (!checkLogin()) {
+          this.plans = [];
+          this.progress = 0;
           return;
         }
         
-        // 优先从 uniCloud 获取用户ID，如果没有再从本地存储获取
-        let uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+        const uid = getCurrentUid();
+        
         if (!uid) {
-          console.log('无法获取用户ID，跳过数据加载');
           return;
-        }
-
-        // 如果从 getCurrentUserInfo 获取到了 uid，保存到本地存储
-        if (uniCloud.getCurrentUserInfo().uid && !uni.getStorageSync('uni_id_user_uid')) {
-          uni.setStorageSync('uni_id_user_uid', uid);
-          console.log('保存用户ID到本地存储:', uid);
         }
         
         const yearMonth = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
         
         try {
-          const waterApi = uniCloud.importObject('water-api');
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
           const res = await waterApi.getMonthlyPlans({ uid, yearMonth });
           
           if (res.errCode === 0) {
             this.plans = res.data;
             this.calculateTotalProgress();
+            this.lastLoadTime = Date.now();  // 更新加载时间
           } else {
-            console.error('获取计划失败:', res.errMsg);
             this.plans = [];
           }
         } catch (e) {
-          console.error('数据加载失败', e);
+          // 数据库资源耗尽错误
+          if (e.message && e.message.indexOf('resource exhausted') > -1) {
+            uni.showToast({ 
+              title: '服务器繁忙，请稍后再试', 
+              icon: 'none',
+              duration: 2000
+            });
+            return;
+          }
+          
           // 如果是匿名身份错误，清除token
           if (e.message && e.message.indexOf('匿名') > -1) {
             uni.removeStorageSync('uni_id_token');

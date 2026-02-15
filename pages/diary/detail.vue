@@ -76,8 +76,12 @@
         </view>
       </view>
 
-      <!-- 删除按钮 -->
+      <!-- 操作按钮 -->
       <view class="action-section">
+        <view class="edit-btn" @click="editDiary">
+          <text class="tn-icon-edit"></text>
+          <text>修改记录</text>
+        </view>
         <view class="delete-btn" @click="deleteDiary">
           <text class="tn-icon-delete"></text>
           <text>删除记录</text>
@@ -107,21 +111,27 @@
         this.loadData();
       }
     },
+    onShow() {
+      // 从编辑页返回时重新加载数据
+      if (this.id) {
+        this.loadData();
+      }
+    },
     methods: {
       goBack() {
         uni.navigateBack();
       },
       async loadData() {
         try {
-          const waterApi = uniCloud.importObject('water-api');
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
           const res = await waterApi.getDiaryDetail({ id: this.id });
           if (res.errCode === 0 && res.data) {
             this.diary = res.data;
           } else {
-            console.error('获取善行详情失败', res);
+            // 获取善行详情失败
           }
         } catch (e) {
-          console.error('加载失败', e);
+          // 加载失败
         }
       },
       typeIcon(type) {
@@ -144,6 +154,12 @@
         };
         return map[type] || 'linear-gradient(135deg, #636E72, #8395A7)';
       },
+      editDiary() {
+        // 跳转到创建页面，携带 ID 参数进入编辑模式
+        uni.navigateTo({
+          url: `/pages/diary/create?id=${this.id}`
+        });
+      },
       deleteDiary() {
         uni.showModal({
           title: '确认删除',
@@ -153,7 +169,7 @@
             if (res.confirm) {
               uni.showLoading({ title: '删除中' });
               try {
-                const waterApi = uniCloud.importObject('water-api');
+                const waterApi = uniCloud.importObject('water-api', { customUI: true });
                 const res = await waterApi.deleteDiary({ id: this.id });
                 
                 if (res.errCode === 0) {
@@ -168,7 +184,6 @@
               } catch (e) {
                 uni.hideLoading();
                 uni.showToast({ title: '删除失败', icon: 'none' });
-                console.error(e);
               }
             }
           }
@@ -411,9 +426,35 @@
 
   .action-section {
     margin-top: 40rpx;
+    display: flex;
+    gap: 20rpx;
+  }
+
+  .edit-btn {
+    flex: 1;
+    background: linear-gradient(135deg, $accent, #D4B87A);
+    border-radius: 50rpx;
+    padding: 28rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    text {
+      color: #FFFFFF;
+      font-size: 28rpx;
+      
+      &:first-child {
+        margin-right: 10rpx;
+      }
+    }
+    
+    &:active {
+      opacity: 0.8;
+    }
   }
 
   .delete-btn {
+    flex: 1;
     background: #FFFEFB;
     border: 2rpx solid #FFE4E1;
     border-radius: 50rpx;

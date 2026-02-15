@@ -60,20 +60,49 @@
           </view>
         </view>
 
-        <!-- 日历打卡视图 -->
+        <!-- 打卡日历视图 -->
         <view class="calendar-section">
           <view class="section-header">
             <view class="section-title">打卡日历</view>
+            <view class="calendar-stats">
+              本月打卡 <text class="highlight">{{ monthCheckedCount }}</text> 天
+            </view>
           </view>
           <view class="calendar-wrapper">
-            <tn-calendar 
-              :show="true" 
-              mode="date"
-              :activeBgColor="'#3D8B8F'"
-              :popup="false"
-              :changeYear="false"
-              :changeMonth="true"
-            ></tn-calendar>
+            <!-- 月份切换 -->
+            <view class="calendar-header">
+              <view class="month-switch" @click="changeMonth(-1)">
+                <text class="tn-icon-left"></text>
+              </view>
+              <view class="month-text">{{ currentYear }}年{{ currentMonth }}月</view>
+              <view class="month-switch" @click="changeMonth(1)">
+                <text class="tn-icon-right"></text>
+              </view>
+            </view>
+            
+            <!-- 星期标题 -->
+            <view class="calendar-weekdays">
+              <view class="weekday-item" v-for="(week, index) in weekdays" :key="index">
+                {{ week }}
+              </view>
+            </view>
+            
+            <!-- 日期网格 -->
+            <view class="calendar-days">
+              <view 
+                v-for="(day, index) in calendarDays" 
+                :key="index"
+                class="day-item"
+                :class="{
+                  'is-other-month': day.isOtherMonth,
+                  'is-today': day.isToday,
+                  'is-checked': day.isChecked
+                }"
+              >
+                <view class="day-number">{{ day.day }}</view>
+                <view v-if="day.isChecked && !day.isOtherMonth" class="check-dot"></view>
+              </view>
+            </view>
           </view>
         </view>
 
@@ -143,6 +172,8 @@
 </template>
 
 <script>
+  import { checkLogin, getCurrentUid } from '@/libs/auth.js';
+
   export default {
     data() {
       return {
@@ -154,7 +185,16 @@
           total_score: 0,
           level: 1
         },
-        isLogin: false
+        isLogin: false,
+        
+        currentYear: new Date().getFullYear(),
+        currentMonth: new Date().getMonth() + 1,
+        calendarDays: [],
+        monthCheckedCount: 0,
+        checkedDates: [],         // 已打卡日期列表
+        weekdays: ['日', '一', '二', '三', '四', '五', '六'],
+        lastLoadDataTime: 0,      // 每日任务加载时间戳
+        lastLoadCalendarTime: 0   // 日历数据加载时间戳
       }
     },
     computed: {
@@ -172,11 +212,19 @@
       const now = new Date();
       this.todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
       
-      const token = uni.getStorageSync('uni_id_token');
-      this.isLogin = !!token;
+      this.isLogin = checkLogin();
       
       if (this.isLogin) {
-        this.loadData();
+        // 节流：5秒内不重复加载每日任务
+        const nowTime = Date.now();
+        if (nowTime - this.lastLoadDataTime >= 5000) {
+          this.loadData();
+        }
+        
+        // 节流：8秒内不重复加载日历数据（变化频率更低）
+        if (nowTime - this.lastLoadCalendarTime >= 8000) {
+          this.loadCalendarData();
+        }
       }
     },
     methods: {
@@ -184,48 +232,167 @@
         uni.navigateBack();
       },
       goCheck() {
+        // 如果今日已有打卡记录，传递日期用于编辑模式
+        const query = this.todayTask ? `?date=${this.todayStr}` : '';
         uni.navigateTo({
-          url: '/pages/daily/check'
+          url: `/pages/daily/check${query}`
         });
       },
       isHasMindIssues(mind) {
         return mind.anxiety || mind.greed || mind.arrogance || mind.anger;
       },
-      async loadData() {
-        // 检查是否真正登录（有有效的 token）
-        const token = uni.getStorageSync('uni_id_token');
-        if (!token) {
-          console.log('未登录，跳过数据加载');
+      
+      // 切换月份
+      changeMonth(offset) {
+        this.currentMonth += offset;
+        if (this.currentMonth > 12) {
+          this.currentMonth = 1;
+          this.currentYear++;
+        } else if (this.currentMonth < 1) {
+          this.currentMonth = 12;
+          this.currentYear--;
+        }
+        
+        // 先清空旧数据，立即重新生成日历
+        this.checkedDates = [];
+        this.generateCalendar();
+        
+        // 节流：2秒内不重复加载（防止快速点击）
+        const nowTime = Date.now();
+        if (nowTime - this.lastLoadCalendarTime >= 2000) {
+          this.loadCalendarData();
+        }
+      },
+      
+      // 生成日历数据
+      generateCalendar() {
+        const year = this.currentYear;
+        const month = this.currentMonth;
+        
+        // 当月第一天是星期几（0-6）
+        const firstDay = new Date(year, month - 1, 1).getDay();
+        
+        // 当月有多少天
+        const daysInMonth = new Date(year, month, 0).getDate();
+        
+        // 上个月有多少天
+        const prevMonthDays = new Date(year, month - 1, 0).getDate();
+        
+        const days = [];
+        
+        // 填充上个月的日期
+        for (let i = firstDay - 1; i >= 0; i--) {
+          days.push({
+            day: prevMonthDays - i,
+            isOtherMonth: true,
+            isToday: false,
+            isChecked: false
+          });
+        }
+        
+        // 填充当月的日期
+        const today = new Date();
+        const todayYear = today.getFullYear();
+        const todayMonth = today.getMonth() + 1;
+        const todayDate = today.getDate();
+        
+        for (let i = 1; i <= daysInMonth; i++) {
+          const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+          days.push({
+            day: i,
+            isOtherMonth: false,
+            isToday: year === todayYear && month === todayMonth && i === todayDate,
+            isChecked: this.checkedDates.includes(dateStr)
+          });
+        }
+        
+        // 填充下个月的日期，补齐到42个格子（6行 x 7列）
+        const remainingDays = 42 - days.length;
+        for (let i = 1; i <= remainingDays; i++) {
+          days.push({
+            day: i,
+            isOtherMonth: true,
+            isToday: false,
+            isChecked: false
+          });
+        }
+        
+        this.calendarDays = days;
+        
+        // 统计本月打卡天数
+        this.monthCheckedCount = days.filter(d => !d.isOtherMonth && d.isChecked).length;
+      },
+      
+      async loadCalendarData() {
+        if (!checkLogin()) {
           return;
         }
         
-        // 优先从 uniCloud 获取用户ID，如果没有再从本地存储获取
-        let uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+        const uid = getCurrentUid();
         if (!uid) {
-          console.log('无法获取用户ID，跳过数据加载');
           return;
         }
         
-        // 如果从 getCurrentUserInfo 获取到了 uid，保存到本地存储
-        if (uniCloud.getCurrentUserInfo().uid && !uni.getStorageSync('uni_id_user_uid')) {
-          uni.setStorageSync('uni_id_user_uid', uid);
-          console.log('保存用户ID到本地存储:', uid);
+        const yearMonth = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
+        
+        try {
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
+          const res = await waterApi.getMonthlyCheckIns({ uid, yearMonth });
+          
+          if (res.errCode === 0) {
+            this.checkedDates = res.data || [];
+            this.monthCheckedCount = this.checkedDates.length;
+            this.generateCalendar();
+            this.lastLoadCalendarTime = Date.now();  // 更新加载时间
+          } else {
+            this.checkedDates = [];
+            this.monthCheckedCount = 0;
+            this.generateCalendar();
+            this.lastLoadCalendarTime = Date.now();
+          }
+        } catch (e) {
+          // 数据库资源耗尽错误
+          if (e.message && e.message.indexOf('resource exhausted') > -1) {
+            uni.showToast({ 
+              title: '服务器繁忙，请稍后再试', 
+              icon: 'none',
+              duration: 2000
+            });
+            return;
+          }
+        }
+      },
+      async loadData() {
+        if (!checkLogin()) {
+          return;
+        }
+        
+        const uid = getCurrentUid();
+        if (!uid) {
+          return;
         }
         
         try {
-          const waterApi = uniCloud.importObject('water-api');
-          const res = await waterApi.getDailyTask({
-            date: this.todayStr,
-            uid: uid
-          });
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
+          const res = await waterApi.getDailyTask({ date: this.todayStr, uid });
           
           if (res.errCode === 0 && res.data) {
             this.todayTask = res.data;
+            this.lastLoadDataTime = Date.now();  // 更新加载时间
           } else {
             this.todayTask = null;
+            this.lastLoadDataTime = Date.now();
           }
         } catch (e) {
-          console.error('数据加载失败', e);
+          // 数据库资源耗尽错误
+          if (e.message && e.message.indexOf('resource exhausted') > -1) {
+            uni.showToast({ 
+              title: '服务器繁忙，请稍后再试', 
+              icon: 'none',
+              duration: 2000
+            });
+            return;
+          }
           // 如果是匿名身份错误，清除token
           if (e.message && e.message.indexOf('匿名') > -1) {
             uni.removeStorageSync('uni_id_token');
@@ -422,13 +589,123 @@
         border-radius: 3rpx;
       }
     }
+    
+    .calendar-stats {
+      font-size: 24rpx;
+      color: $text-hint;
+      
+      .highlight {
+        color: $primary;
+        font-weight: bold;
+        font-size: 28rpx;
+      }
+    }
   }
   
   .calendar-wrapper {
     background: $card-bg;
     border-radius: 24rpx;
-    padding: 20rpx;
+    padding: 24rpx;
     box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+  }
+  
+  .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24rpx;
+    padding: 0 10rpx;
+    
+    .month-switch {
+      width: 60rpx;
+      height: 60rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: $bg;
+      
+      text {
+        font-size: 32rpx;
+        color: $text;
+      }
+    }
+    
+    .month-text {
+      font-size: 32rpx;
+      font-weight: bold;
+      color: $text;
+    }
+  }
+  
+  .calendar-weekdays {
+    display: flex;
+    margin-bottom: 16rpx;
+    
+    .weekday-item {
+      flex: 1;
+      text-align: center;
+      font-size: 24rpx;
+      color: $text-hint;
+      padding: 12rpx 0;
+    }
+  }
+  
+  .calendar-days {
+    display: flex;
+    flex-wrap: wrap;
+    
+    .day-item {
+      width: calc(100% / 7);
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin-bottom: 10rpx;
+      
+      .day-number {
+        font-size: 28rpx;
+        color: $text;
+      }
+      
+      .check-dot {
+        width: 8rpx;
+        height: 8rpx;
+        background: $primary;
+        border-radius: 50%;
+        margin-top: 4rpx;
+      }
+      
+      &.is-other-month {
+        .day-number {
+          color: $text-hint;
+          opacity: 0.3;
+        }
+      }
+      
+      &.is-today {
+        .day-number {
+          background: linear-gradient(135deg, $primary, $primary-light);
+          color: #FFFFFF;
+          width: 60rpx;
+          height: 60rpx;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+        }
+      }
+      
+      &.is-checked:not(.is-today) {
+        .day-number {
+          color: $primary;
+          font-weight: bold;
+        }
+      }
+    }
   }
 
   // 今日功课

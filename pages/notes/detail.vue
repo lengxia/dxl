@@ -67,8 +67,12 @@
         </view>
       </view>
 
-      <!-- 删除按钮 -->
+      <!-- 操作按钮 -->
       <view class="action-section">
+        <view class="edit-btn" @click="editNote">
+          <text class="tn-icon-edit"></text>
+          <text>修改札记</text>
+        </view>
         <view class="delete-btn" @click="deleteNote">
           <text class="tn-icon-delete"></text>
           <text>删除札记</text>
@@ -98,21 +102,25 @@
         this.loadData();
       }
     },
+    onShow() {
+      // 从编辑页返回时重新加载数据
+      if (this.id) {
+        this.loadData();
+      }
+    },
     methods: {
       goBack() {
         uni.navigateBack();
       },
       async loadData() {
         try {
-          const waterApi = uniCloud.importObject('water-api');
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
           const res = await waterApi.getNoteDetail({ id: this.id });
           if (res.errCode === 0 && res.data) {
             this.note = res.data;
-          } else {
-            console.error('获取札记详情失败', res);
           }
         } catch (e) {
-          console.error('加载失败', e);
+          // 加载失败
         }
       },
       moodEmoji(mood) {
@@ -141,6 +149,12 @@
           urls: this.note.images
         });
       },
+      editNote() {
+        // 跳转到创建页面，携带 ID 参数进入编辑模式
+        uni.navigateTo({
+          url: `/pages/notes/create?id=${this.id}`
+        });
+      },
       deleteNote() {
         uni.showModal({
           title: '确认删除',
@@ -150,7 +164,7 @@
             if (res.confirm) {
               uni.showLoading({ title: '删除中' });
               try {
-                const waterApi = uniCloud.importObject('water-api');
+                const waterApi = uniCloud.importObject('water-api', { customUI: true });
                 const res = await waterApi.deleteNote({ id: this.id });
                 
                 if (res.errCode === 0) {
@@ -165,7 +179,6 @@
               } catch (e) {
                 uni.hideLoading();
                 uni.showToast({ title: '删除失败', icon: 'none' });
-                console.error(e);
               }
             }
           }
@@ -359,9 +372,36 @@
 
   .action-section {
     margin-top: 40rpx;
+    display: flex;
+    gap: 20rpx;
+  }
+
+  .edit-btn {
+    flex: 1;
+    background: linear-gradient(135deg, $primary, $primary-light);
+    border-radius: 50rpx;
+    padding: 28rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    text {
+      color: #FFFFFF;
+      font-size: 28rpx;
+      font-weight: 500;
+      
+      &:first-child {
+        margin-right: 10rpx;
+      }
+    }
+    
+    &:active {
+      opacity: 0.9;
+    }
   }
 
   .delete-btn {
+    flex: 1;
     background: #FFFEFB;
     border: 2rpx solid #FFE4E1;
     border-radius: 50rpx;

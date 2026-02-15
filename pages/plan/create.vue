@@ -88,7 +88,7 @@
                 v-for="(cate, i) in categories" 
                 :key="i" 
                 :class="['category-tag', item.category === cate.name ? 'active' : '', cate.class]"
-                @click="item.category = cate.name"
+                @click="selectCategory(index, cate.name)"
               >
                 <text :class="['tag-icon', cate.icon]"></text>
                 <text class="tag-name">{{ cate.name }}</text>
@@ -153,6 +153,8 @@
   export default {
     data() {
       return {
+        editMode: false, // 是否为编辑模式
+        editId: '', // 编辑的记录ID
         showTimePicker: false,
         categories: [
           { name: '修身', icon: 'tn-icon-heart', class: 'cate-body' },
@@ -174,12 +176,48 @@
         }
       }
     },
+    onLoad(options) {
+      // 如果传入了 id 参数，说明是编辑模式
+      if (options.id) {
+        this.editMode = true;
+        this.editId = options.id;
+        this.loadExistingData(options.id);
+      }
+    },
     onReady() {
       this.$refs.planForm.setRules(this.rules);
     },
     methods: {
       goBack() {
         uni.navigateBack();
+      },
+      // 加载已有的计划数据（编辑模式）
+      async loadExistingData(id) {
+        uni.showLoading({ title: '加载中...' });
+        
+        try {
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
+          const res = await waterApi.getMonthlyPlanDetail({ id });
+          
+          if (res.errCode === 0 && res.data) {
+            const data = res.data;
+            
+            // 回显数据到表单
+            this.form = {
+              year_month: data.year_month || '',
+              title: data.title || '',
+              goals: data.goals || [{ category: '修身', content: '', target_days: 15, completed_days: 0 }],
+              status: data.status || 'planning'
+            };
+            
+            uni.hideLoading();
+          } else {
+            throw new Error(res.errMsg || '加载失败');
+          }
+        } catch (e) {
+          uni.hideLoading();
+          uni.showToast({ title: '加载失败', icon: 'none' });
+        }
       },
       onTimeConfirm(e) {
         this.form.year_month = `${e.year}-${String(e.month).padStart(2, '0')}`;
@@ -200,6 +238,10 @@
       },
       removeGoal(index) {
         this.form.goals.splice(index, 1);
+      },
+      selectCategory(goalIndex, category) {
+        // 使用 $set 确保响应式更新
+        this.$set(this.form.goals[goalIndex], 'category', category);
       },
       async submit() {
         if (!this.form.year_month) {
@@ -222,17 +264,32 @@
         uni.showLoading({ title: '保存中' });
         
         try {
-          const waterApi = uniCloud.importObject('water-api');
-          const data = {
-            ...this.form,
-            user_id: uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid')
-          };
+          const waterApi = uniCloud.importObject('water-api', { customUI: true });
+          let res;
           
-          const res = await waterApi.addMonthlyPlan(data);
+          if (this.editMode) {
+            // 编辑模式：调用更新接口
+            const data = {
+              id: this.editId,
+              year_month: this.form.year_month,
+              title: this.form.title,
+              goals: this.form.goals,
+              status: this.form.status,
+              update_time: Date.now()
+            };
+            res = await waterApi.updateMonthlyPlan(data);
+          } else {
+            // 新建模式：调用添加接口
+            const data = {
+              ...this.form,
+              user_id: uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid')
+            };
+            res = await waterApi.addMonthlyPlan(data);
+          }
           
           if (res.errCode === 0) {
             uni.hideLoading();
-            uni.showToast({ title: '创建成功', icon: 'success' });
+            uni.showToast({ title: this.editMode ? '修改成功' : '创建成功', icon: 'success' });
             setTimeout(() => {
               uni.navigateBack();
             }, 1500);
@@ -241,8 +298,7 @@
           }
         } catch (e) {
           uni.hideLoading();
-          uni.showToast({ title: '保存失败', icon: 'none' });
-          console.error('保存计划失败:', e);
+          uni.showToast({ title: this.editMode ? '修改失败' : '保存失败', icon: 'none' });
         }
       }
     }
@@ -496,6 +552,8 @@
     background: #F9F8F5;
     border-radius: 30rpx;
     transition: all 0.2s;
+    cursor: pointer;
+    border: 2rpx solid transparent;
     
     .tag-icon {
       font-size: 28rpx;
@@ -508,7 +566,16 @@
       color: $text-secondary;
     }
     
+    &:active:not(.active) {
+      transform: scale(0.95);
+      background: #F0EDE8;
+    }
+    
     &.active {
+      border: 2rpx solid transparent;
+      box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+      transform: scale(1.05);
+      
       &.cate-body {
         background: linear-gradient(135deg, $primary, $primary-light);
       }
@@ -524,6 +591,7 @@
       
       .tag-icon, .tag-name {
         color: #FFFFFF;
+        font-weight: 500;
       }
       
       .tag-name {
