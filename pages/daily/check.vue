@@ -240,6 +240,8 @@
 </template>
 
 <script>
+  import { getCurrentUid, updateStoreUser } from '@/libs/auth.js'
+  
   export default {
     data() {
       return {
@@ -371,16 +373,11 @@
         const now = new Date();
         const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         
-        // 优先从 uniCloud 获取用户ID，如果没有再从本地存储获取
-        let uid = uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid');
+        // 使用统一的 getCurrentUid 方法
+        const uid = getCurrentUid();
         if (!uid) {
           uni.showToast({ title: '请重新登录', icon: 'none' });
           return;
-        }
-        
-        // 如果从 getCurrentUserInfo 获取到了 uid，保存到本地存储
-        if (uniCloud.getCurrentUserInfo().uid && !uni.getStorageSync('uni_id_user_uid')) {
-          uni.setStorageSync('uni_id_user_uid', uid);
         }
         
         const bodyCheck = {
@@ -421,9 +418,18 @@
           if (res.errCode === 0) {
             // 更新全局状态，通知首页刷新
             this.$store.commit('$tStore', {
-              name: 'last_daily_tasks',
+              name: 'vuex_last_daily_date',
               value: dateStr
             });
+            if(this.editMode === false){
+              // 更新用户修行数据
+              const currentProfile = (this.$store.state.vuex_user && this.$store.state.vuex_user.dao_profile) || {};
+              updateStoreUser({
+                dao_profile: {
+                  continuous_days: (currentProfile.continuous_days || 0) + 1,
+                }
+              });
+            }
             
             uni.hideLoading();
             uni.showToast({ title: '功德圆满', icon: 'success' });

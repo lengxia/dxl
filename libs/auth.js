@@ -1,13 +1,26 @@
 import store from '@/store'
 
 // 内部辅助：更新 Vuex 用户状态
-const updateStoreUser = (userInfo) => {
+export const updateStoreUser = (userInfo) => {
+	const currentUser = store.state.vuex_user || {};
+	
+	// 基础合并
+	let finalUser = {
+		...currentUser,
+		...userInfo
+	};
+	
+	// 特殊处理 dao_profile 的深度合并（防止丢失嵌套属性）
+	if (userInfo.dao_profile) {
+		finalUser.dao_profile = {
+			...(currentUser.dao_profile || {}),
+			...userInfo.dao_profile
+		};
+	}
+
 	store.commit('$tStore', {
 		name: 'vuex_user',
-		value: {
-			...store.state.vuex_user,
-			...userInfo,
-		}
+		value: finalUser
 	})
 }
 

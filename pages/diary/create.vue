@@ -178,11 +178,14 @@
 </template>
 
 <script>
+  import { updateStoreUser } from '@/libs/auth.js'
+
   export default {
     data() {
       return {
         editMode: false, // 是否为编辑模式
         editId: '', // 编辑的记录ID
+        oldMerit: 0, // 旧的功德分（用于计算差额）
         showCalendar: false,
         types: ["助人", "爱物", "环保", "孝亲", "其他"],
         form: {
@@ -248,6 +251,7 @@
               is_public: data.is_public || false
             };
             
+            this.oldMerit = data.merit_points || 0;
             uni.hideLoading();
           } else {
             uni.hideLoading();
@@ -286,6 +290,22 @@
           }
           
           if (res.errCode === 0) {
+            // 更新用户统计数据（新增或修改）
+            const currentProfile = (this.$store.state.vuex_user && this.$store.state.vuex_user.dao_profile) || {};
+            
+            // 计算功德差额：
+            // 新增模式：oldMerit 为 0，差额 = 当前功德
+            // 编辑模式：差额 = 当前功德 - 旧功德
+            const meritDiff = (this.form.merit_points || 0) - this.oldMerit;
+            const newTotalMerit = (currentProfile.total_merit || 0) + meritDiff;
+            
+            updateStoreUser({
+              dao_profile: {
+                total_merit: newTotalMerit,
+                level: Math.floor(newTotalMerit / 1000) + 1
+              }
+            });
+            
             uni.hideLoading();
             uni.showToast({ title: this.editMode ? '更新成功' : '记录成功', icon: 'success' });
             setTimeout(() => {

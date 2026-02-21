@@ -1,95 +1,180 @@
 const db = uniCloud.database();
+const dbCmd = db.command;
+
+// Token 缓存（使用云函数实例级缓存，避免频繁验证）
+const tokenCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 缓存 5 分钟
+
+// ==================== 工具函数 ====================
+
+/**
+ * 统一错误响应格式
+ */
+function errorResponse(errCode, errMsg) {
+  return { errCode, errMsg };
+}
+
+/**
+ * 统一成功响应格式
+ */
+function successResponse(data = null, errMsg = 'success') {
+  return { errCode: 0, errMsg, data };
+}
+
+/**
+ * 验证必需参数
+ */
+function validateRequiredParams(params, requiredFields) {
+  for (const field of requiredFields) {
+    if (!params[field]) {
+      return errorResponse(400, `参数${field}不能为空`);
+    }
+  }
+  return null;
+}
+
+/**
+ * 验证记录所有权
+ */
+async function verifyRecordOwnership(collection, id, currentUid) {
+  const record = await db.collection(collection).doc(id).get();
+  
+  if (!record.data || record.data.length === 0) {
+    return { error: errorResponse(404, '记录不存在'), data: null };
+  }
+  
+  const recordUserId = record.data[0].user_id || record.data[0].uid;
+  if (recordUserId !== currentUid) {
+    return { error: errorResponse(403, '无权操作'), data: null };
+  }
+  
+  return { error: null, data: record.data[0] };
+}
+
+/**
+ * 更新用户功德分（统一处理）
+ */
+async function updateUserMerit(userId, meritChange) {
+  if (!userId || meritChange === 0) return;
+  
+  try {
+    const userRes = await db.collection('uni-id-users').doc(userId).get();
+    if (!userRes.data || userRes.data.length === 0) return;
+    
+    const currentProfile = userRes.data[0].dao_profile || {};
+    const newTotalMerit = Math.max(0, (currentProfile.total_merit || 0) + meritChange);
+    
+    await db.collection('uni-id-users').doc(userId).update({
+      'dao_profile.total_merit': newTotalMerit,
+      'dao_profile.level': Math.floor(newTotalMerit / 1000) + 1
+    });
+  } catch (e) {
+    console.error('更新用户功德失败:', e);
+  }
+}
+
+// ==================== 主模块 ====================
 
 module.exports = {
-  _before: function () {
-    // 简单的权限校验，确保已登录
+  _before: async function () {
     const clientInfo = this.getClientInfo();
-    this.uniIdToken = clientInfo.uniIdToken;
-    if (!this.uniIdToken) {
-      throw new Error('未登录');
+    
+    if (!clientInfo.uniIdToken) {
+      return errorResponse(401, '未登录，请先登录');
     }
+    
+    const token = clientInfo.uniIdToken;
+    const now = Date.now();
+    
+    // 检查缓存
+    const cached = tokenCache.get(token);
+    if (cached && now - cached.timestamp < CACHE_DURATION) {
+      this.uniIdToken = cached.data;
+      return;
+    }
+    
+    // 验证 token
+    const uniIdCommon = require('uni-id-common');
+    const uniID = uniIdCommon.createInstance({ context: this });
+    const verifyResult = await uniID.checkToken(token);
+    
+    if (verifyResult.errCode !== 0) {
+      tokenCache.delete(token);
+      return errorResponse(401, '登录已过期，请重新登录');
+    }
+    
+    // 缓存验证结果
+    tokenCache.set(token, { data: verifyResult, timestamp: now });
+    
+    // 定期清理过期缓存
+    if (tokenCache.size > 1000) {
+      Array.from(tokenCache.entries()).forEach(([key, value]) => {
+        if (now - value.timestamp >= CACHE_DURATION) {
+          tokenCache.delete(key);
+        }
+      });
+    }
+    
+    this.uniIdToken = verifyResult;
   },
 
-  /**
-   * 获取悟道札记详情
-   * @param {Object} params
-   */
+  // ==================== 悟道札记 ====================
+
   async getNoteDetail(params) {
-    const { id } = params;
-    if (!id) return { errCode: 1, errMsg: 'ID不能为空' };
+    const validationError = validateRequiredParams(params, ['id']);
+    if (validationError) return validationError;
     
     try {
-      const res = await db.collection('dao_notes').doc(id).get();
+      const res = await db.collection('dao_notes').doc(params.id).get();
       if (!res.data || res.data.length === 0) {
-        return { errCode: 404, errMsg: '记录不存在' };
+        return errorResponse(404, '记录不存在');
       }
       
       const note = res.data[0];
       const uid = this.uniIdToken.uid;
-      
-      // 如果是私有札记，只有作者能查看
       const noteUserId = note.user_id || note.uid;
+      
       if (note.is_private && noteUserId !== uid) {
-        return { errCode: 403, errMsg: '无权访问' };
+        return errorResponse(403, '无权访问');
       }
       
-      return {
-        errCode: 0,
-        data: note
-      };
+      return successResponse(note);
     } catch (e) {
-      return { errCode: 500, errMsg: e.message };
+      return errorResponse(500, `查询失败: ${e.message}`);
     }
   },
 
-  /**
-   * 删除悟道札记
-   * @param {Object} params
-   */
-  async deleteNote(params) {
-    const { id } = params;
-    if (!id) return { errCode: 1, errMsg: 'ID不能为空' };
+  async getNotes(params) {
+    const validationError = validateRequiredParams(params, ['uid']);
+    if (validationError) return validationError;
+    
+    // 权限验证：只能查看自己的札记
+    if (params.uid !== this.uniIdToken.uid) {
+      return errorResponse(403, '无权访问');
+    }
     
     try {
-      // 权限验证：只能删除自己的札记
-      const record = await db.collection('dao_notes').doc(id).get();
-      if (!record.data || record.data.length === 0) {
-        return { errCode: 404, errMsg: '记录不存在' };
-      }
+      const res = await db.collection('dao_notes')
+        .where({ user_id: params.uid })
+        .orderBy('create_time', 'desc')
+        .get();
       
-      const uid = this.uniIdToken.uid;
-      const recordUserId = record.data[0].user_id || record.data[0].uid;
-      if (recordUserId !== uid) {
-        return { errCode: 403, errMsg: '无权操作' };
-      }
-      
-      await db.collection('dao_notes').doc(id).remove();
-      return { errCode: 0, errMsg: 'success' };
+      return successResponse(res.data);
     } catch (e) {
-      return { errCode: 500, errMsg: e.message };
+      return errorResponse(500, `查询失败: ${e.message}`);
     }
   },
 
-  /**
-   * 添加悟道札记
-   * @param {Object} params 札记数据
-   */
   async addNote(params) {
-    const { title, content, mood, tags, images, is_private, user_id } = params;
+    const { title, content, mood, tags, images, is_private } = params;
+    const uid = this.uniIdToken.uid;
     
-    // 自动补充 user_id，如果前端没传，尝试从 token 获取
-    const uid = user_id || this.uniIdToken.uid;
-    
-    if (!title || !content || !uid) {
-      return {
-        errCode: 1,
-        errMsg: '参数不完整'
-      };
-    }
+    const validationError = validateRequiredParams({ title, content }, ['title', 'content']);
+    if (validationError) return validationError;
 
     try {
       const res = await db.collection('dao_notes').add({
-        user_id: uid, // 统一使用 user_id
+        user_id: uid,
         title,
         content,
         mood,
@@ -100,36 +185,22 @@ module.exports = {
         update_time: Date.now()
       });
       
-      return {
-        errCode: 0,
-        data: res
-      };
+      return successResponse(res);
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `创建失败: ${e.message}`);
     }
   },
 
-  /**
-   * 更新悟道札记
-   * @param {Object} params
-   */
   async updateNote(params) {
-    const { id, title, content, mood, tags, images, is_private, update_time } = params;
-    
-    if (!id) {
-      return {
-        errCode: 1,
-        errMsg: 'ID不能为空'
-      };
-    }
+    const validationError = validateRequiredParams(params, ['id']);
+    if (validationError) return validationError;
+
+    const { error } = await verifyRecordOwnership('dao_notes', params.id, this.uniIdToken.uid);
+    if (error) return error;
 
     try {
-      const updateData = {
-        update_time: update_time || Date.now()
-      };
+      const { id, title, content, mood, tags, images, is_private } = params;
+      const updateData = { update_time: Date.now() };
       
       if (title !== undefined) updateData.title = title;
       if (content !== undefined) updateData.content = content;
@@ -139,287 +210,196 @@ module.exports = {
       if (is_private !== undefined) updateData.is_private = is_private;
       
       await db.collection('dao_notes').doc(id).update(updateData);
-      
-      return {
-        errCode: 0,
-        errMsg: 'success'
-      };
+      return successResponse();
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `更新失败: ${e.message}`);
     }
   },
 
-  /**
-   * 获取每日任务
-   * @param {Object} params
-   * @param {String} params.date 日期字符串 YYYY-MM-DD
-   * @param {String} params.uid 用户ID
-   */
+  async deleteNote(params) {
+    const validationError = validateRequiredParams(params, ['id']);
+    if (validationError) return validationError;
+
+    const { error } = await verifyRecordOwnership('dao_notes', params.id, this.uniIdToken.uid);
+    if (error) return error;
+
+    try {
+      await db.collection('dao_notes').doc(params.id).remove();
+      return successResponse();
+    } catch (e) {
+      return errorResponse(500, `删除失败: ${e.message}`);
+    }
+  },
+
+  // ==================== 每日打卡 ====================
+
   async getDailyTask(params) {
-    const { date, uid } = params;
+    const validationError = validateRequiredParams(params, ['date', 'uid']);
+    if (validationError) return validationError;
     
-    if (!date || !uid) {
-      return {
-        errCode: 1,
-        errMsg: '参数不完整'
-      };
+    if (params.uid !== this.uniIdToken.uid) {
+      return errorResponse(403, '无权访问');
     }
 
     try {
       const res = await db.collection('daily_tasks')
-        .where({
-          date: date,
-          user_id: uid
-        })
+        .where({ date: params.date, user_id: params.uid })
         .get();
-        
-      return {
-        errCode: 0,
-        data: res.data && res.data.length > 0 ? res.data[0] : null
-      };
+      
+      return successResponse(res.data && res.data.length > 0 ? res.data[0] : null);
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
-    }
-  },
-  
-  /**
-   * 检查今日任务状态
-   * @param {Object} params
-   */
-  async checkTodayTask(params) {
-    const { date, user_id } = params;
-    const uid = user_id || this.uniIdToken.uid;
-    
-    if (!date || !uid) return { errCode: 1, errMsg: '参数不完整' };
-    
-    try {
-      const res = await db.collection('daily_tasks')
-        .where({ date: date, user_id: uid })
-        .count();
-      return {
-        errCode: 0,
-        data: { total: res.total }
-      };
-    } catch (e) {
-      return { errCode: 500, errMsg: e.message };
+      return errorResponse(500, `查询失败: ${e.message}`);
     }
   },
 
-  /**
-   * 提交/更新每日任务
-   * @param {Object} params 任务数据
-   */
-  async submitDailyTask(params) {
-    const { date, user_id } = params;
+  async checkTodayTask(params) {
+    const validationError = validateRequiredParams(params, ['date', 'user_id']);
+    if (validationError) return validationError;
     
-    if (!date || !user_id) {
-      return {
-        errCode: 1,
-        errMsg: '参数不完整'
-      };
+    try {
+      const res = await db.collection('daily_tasks')
+        .where({ date: params.date, user_id: params.user_id })
+        .count();
+      
+      return successResponse({ total: res.total });
+    } catch (e) {
+      return errorResponse(500, `查询失败: ${e.message}`);
+    }
+  },
+
+  async submitDailyTask(params) {
+    const validationError = validateRequiredParams(params, ['date', 'user_id']);
+    if (validationError) return validationError;
+    
+    // 权限验证：只能为自己提交
+    if (params.user_id !== this.uniIdToken.uid) {
+      return errorResponse(403, '无权操作');
     }
 
     try {
       const checkRes = await db.collection('daily_tasks')
-        .where({
-          date: date,
-          user_id: user_id
-        })
+        .where({ date: params.date, user_id: params.user_id })
         .get();
       
-      if (checkRes.data && checkRes.data.length > 0) {
-        const id = checkRes.data[0]._id;
-        delete params._id; // 确保不更新 _id
+      const isNewTask = !checkRes.data || checkRes.data.length === 0;
+      
+      if (isNewTask) {
+        await db.collection('daily_tasks').add(params);
         
+        // 更新连续打卡天数
+        const userRes = await db.collection('uni-id-users').doc(params.user_id).get();
+        if (userRes.data && userRes.data.length > 0) {
+          const currentProfile = userRes.data[0].dao_profile || {};
+          await db.collection('uni-id-users').doc(params.user_id).update({
+            'dao_profile.continuous_days': (currentProfile.continuous_days || 0) + 1
+          });
+        }
+      } else {
+        const id = checkRes.data[0]._id;
+        delete params._id;
         await db.collection('daily_tasks').doc(id).update({
           ...params,
           update_time: Date.now()
         });
-      } else {
-        await db.collection('daily_tasks').add(params);
       }
       
-      return {
-        errCode: 0,
-        errMsg: 'success'
-      };
+      return successResponse();
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `提交失败: ${e.message}`);
     }
   },
 
-  /**
-   * 获取用户信息
-   * @param {Object} params
-   * @param {String} params.uid 用户ID
-   */
-  async getUserInfo(params) {
-    const { uid } = params;
-    
-    if (!uid) {
-      return {
-        errCode: 1,
-        errMsg: '用户ID不能为空'
-      };
-    }
+  async getMonthlyCheckIns(params) {
+    const validationError = validateRequiredParams(params, ['uid', 'yearMonth']);
+    if (validationError) return validationError;
 
     try {
-      const res = await db.collection('uni-id-users')
-        .doc(uid)
-        .field({
-          nickname: true,
-          avatar: true,
-          mobile: true,
-          realname: true,
-          gender: true,
-          birthday: true,
-          job: true,
-          dao_profile: true
+      // 构造日期范围（性能优化：使用范围查询替代正则）
+      const startDate = `${params.yearMonth}-01`;
+      const endDate = `${params.yearMonth}-31`;
+      
+      const res = await db.collection('daily_tasks')
+        .where({
+          user_id: params.uid,
+          date: dbCmd.gte(startDate).and(dbCmd.lte(endDate))
         })
+        .field({ date: true })
         .get();
-        
-      return {
-        errCode: 0,
-        data: res.data && res.data.length > 0 ? res.data[0] : null
-      };
+      
+      const dates = res.data.map(item => item.date);
+      return successResponse(dates);
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `查询失败: ${e.message}`);
     }
   },
 
-  /**
-   * 更新用户信息（如头像、昵称）
-   * @param {Object} params
-   * @param {String} params.uid 用户ID
-   * @param {Object} params.data 要更新的数据
-   */
-  async updateUserInfo(params) {
-    const { uid, data } = params;
-    
-    if (!uid || !data) {
-      return {
-        errCode: 1,
-        errMsg: '参数不完整'
-      };
-    }
+  async checkDailyTaskStatus(params) {
+    const validationError = validateRequiredParams(params, ['uid', 'date']);
+    if (validationError) return validationError;
 
     try {
-      await db.collection('uni-id-users')
-        .doc(uid)
-        .update(data);
-        
-      return {
-        errCode: 0,
-        errMsg: 'success'
-      };
+      const res = await db.collection('daily_tasks')
+        .where({ user_id: params.uid, date: params.date })
+        .count();
+      
+      return successResponse({
+        hasChecked: res.total > 0,
+        date: params.date
+      });
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `查询失败: ${e.message}`);
     }
   },
 
-  /**
-   * 获取善行日记
-   * @param {Object} params
-   * @param {String} params.uid 用户ID
-   */
+  // ==================== 善行日记 ====================
+
   async getDiaries(params) {
-    const { uid } = params;
+    const validationError = validateRequiredParams(params, ['uid']);
+    if (validationError) return validationError;
     
-    if (!uid) {
-      return {
-        errCode: 1,
-        errMsg: '参数不完整'
-      };
+    // 权限验证：只能查看自己的日记
+    if (params.uid !== this.uniIdToken.uid) {
+      return errorResponse(403, '无权访问');
     }
 
     try {
       const res = await db.collection('good_deeds')
-        .where({
-          user_id: uid
-        })
+        .where({ user_id: params.uid })
         .orderBy('date', 'desc')
         .get();
-        
-      return {
-        errCode: 0,
-        data: res.data
-      };
+      
+      return successResponse(res.data);
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `查询失败: ${e.message}`);
     }
   },
 
-  /**
-   * 获取善行日记详情
-   * @param {Object} params
-   */
   async getDiaryDetail(params) {
-    const { id } = params;
-    if (!id) return { errCode: 1, errMsg: 'ID不能为空' };
+    const validationError = validateRequiredParams(params, ['id']);
+    if (validationError) return validationError;
     
     try {
-      const res = await db.collection('good_deeds').doc(id).get();
+      const res = await db.collection('good_deeds').doc(params.id).get();
       if (!res.data || res.data.length === 0) {
-        return { errCode: 404, errMsg: '记录不存在' };
+        return errorResponse(404, '记录不存在');
       }
       
-      return {
-        errCode: 0,
-        data: res.data[0]
-      };
+      return successResponse(res.data[0]);
     } catch (e) {
-      return { errCode: 500, errMsg: e.message };
+      return errorResponse(500, `查询失败: ${e.message}`);
     }
   },
 
-  /**
-   * 删除善行日记
-   * @param {Object} params
-   */
-  async deleteDiary(params) {
-    const { id } = params;
-    if (!id) return { errCode: 1, errMsg: 'ID不能为空' };
-    
-    try {
-      await db.collection('good_deeds').doc(id).remove();
-      return { errCode: 0, errMsg: 'success' };
-    } catch (e) {
-      return { errCode: 500, errMsg: e.message };
-    }
-  },
-
-  /**
-   * 添加善行日记
-   * @param {Object} params
-   */
   async addDiary(params) {
-    const { date, deed_type, title, content, intention, feeling, merit_points, is_public, user_id } = params;
+    const { date, deed_type, title, merit_points } = params;
+    const uid = this.uniIdToken.uid;
     
-    const uid = user_id || this.uniIdToken.uid;
+    const validationError = validateRequiredParams({ title, date }, ['title', 'date']);
+    if (validationError) return validationError;
     
-    if (!title || !date || !uid) {
-      return {
-        errCode: 1,
-        errMsg: '参数不完整'
-      };
+    // 验证功德分为非负数
+    if (merit_points !== undefined && merit_points < 0) {
+      return errorResponse(400, '功德分不能为负数');
     }
 
     try {
@@ -428,48 +408,48 @@ module.exports = {
         date,
         deed_type,
         title,
-        content,
-        intention,
-        feeling,
+        content: params.content,
+        intention: params.intention,
+        feeling: params.feeling,
         merit_points,
-        is_public,
+        is_public: params.is_public,
         create_time: Date.now(),
         update_time: Date.now()
       });
       
-      // 更新用户总功德（可选，如果需要在用户表中统计）
-      // 这里暂不处理，以免事务复杂化
+      // 更新用户功德
+      await updateUserMerit(uid, merit_points || 0);
       
-      return {
-        errCode: 0,
-        data: res
-      };
+      return successResponse(res);
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `创建失败: ${e.message}`);
     }
   },
 
-  /**
-   * 更新善行日记
-   * @param {Object} params
-   */
   async updateDiary(params) {
-    const { id, date, deed_type, title, content, intention, feeling, merit_points, is_public } = params;
+    const validationError = validateRequiredParams(params, ['id']);
+    if (validationError) return validationError;
     
-    if (!id) {
-      return {
-        errCode: 1,
-        errMsg: 'ID不能为空'
-      };
+    // 验证功德分为非负数
+    if (params.merit_points !== undefined && params.merit_points < 0) {
+      return errorResponse(400, '功德分不能为负数');
     }
 
     try {
-      const updateData = {
-        update_time: Date.now()
-      };
+      const oldRecord = await db.collection('good_deeds').doc(params.id).get();
+      if (!oldRecord.data || oldRecord.data.length === 0) {
+        return errorResponse(404, '记录不存在');
+      }
+      
+      const oldDiary = oldRecord.data[0];
+      
+      // 权限验证
+      if (oldDiary.user_id !== this.uniIdToken.uid) {
+        return errorResponse(403, '无权操作');
+      }
+      
+      const { id, date, deed_type, title, content, intention, feeling, merit_points, is_public } = params;
+      const updateData = { update_time: Date.now() };
       
       if (date !== undefined) updateData.date = date;
       if (deed_type !== undefined) updateData.deed_type = deed_type;
@@ -482,273 +462,187 @@ module.exports = {
       
       await db.collection('good_deeds').doc(id).update(updateData);
       
-      return {
-        errCode: 0,
-        errMsg: 'success'
-      };
+      // 如果功德分变化，更新用户功德
+      if (merit_points !== undefined) {
+        const meritDiff = merit_points - (oldDiary.merit_points || 0);
+        await updateUserMerit(oldDiary.user_id, meritDiff);
+      }
+      
+      return successResponse();
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `更新失败: ${e.message}`);
     }
   },
 
-  /**
-   * 获取悟道札记
-   * @param {Object} params
-   * @param {String} params.uid 用户ID
-   */
-  async getNotes(params) {
-    const { uid } = params;
-    
-    if (!uid) {
-      return {
-        errCode: 1,
-        errMsg: '参数不完整'
-      };
-    }
+  async deleteDiary(params) {
+    const validationError = validateRequiredParams(params, ['id']);
+    if (validationError) return validationError;
 
     try {
-      const res = await db.collection('dao_notes')
-        .where({
-          user_id: uid
-        })
-        .orderBy('create_time', 'desc')
-        .get();
-        
-      return {
-        errCode: 0,
-        data: res.data
-      };
+      const record = await db.collection('good_deeds').doc(params.id).get();
+      if (!record.data || record.data.length === 0) {
+        return errorResponse(404, '记录不存在');
+      }
+      
+      const diary = record.data[0];
+      
+      await db.collection('good_deeds').doc(params.id).remove();
+      
+      // 扣减功德
+      await updateUserMerit(diary.user_id, -(diary.merit_points || 0));
+      
+      return successResponse();
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `删除失败: ${e.message}`);
     }
   },
 
-  /**
-   * 获取月度计划
-   * @param {Object} params
-   * @param {String} params.uid 用户ID
-   * @param {String} params.yearMonth 年月字符串 YYYY-MM
-   */
+  // ==================== 月度计划 ====================
+
   async getMonthlyPlans(params) {
-    const { uid, yearMonth } = params;
-    
-    if (!uid || !yearMonth) {
-      return {
-        errCode: 1,
-        errMsg: '参数不完整'
-      };
-    }
+    const validationError = validateRequiredParams(params, ['uid', 'yearMonth']);
+    if (validationError) return validationError;
 
     try {
       const res = await db.collection('monthly_plans')
-        .where({
-          user_id: uid,
-          year_month: yearMonth
-        })
+        .where({ user_id: params.uid, year_month: params.yearMonth })
         .get();
-        
-      return {
-        errCode: 0,
-        data: res.data
-      };
+      
+      return successResponse(res.data);
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `查询失败: ${e.message}`);
     }
   },
 
-  /**
-   * 添加月度计划
-   * @param {Object} params
-   */
-  async addMonthlyPlan(params) {
-    const { year_month, title, goals, status, user_id } = params;
+  async getMonthlyPlanDetail(params) {
+    const validationError = validateRequiredParams(params, ['id']);
+    if (validationError) return validationError;
     
-    // 自动补充 user_id
-    const uid = user_id || this.uniIdToken.uid;
-    
-    if (!year_month || !title || !uid) {
-      return {
-        errCode: 1,
-        errMsg: '参数不完整'
-      };
+    try {
+      const res = await db.collection('monthly_plans').doc(params.id).get();
+      if (!res.data || res.data.length === 0) {
+        return errorResponse(404, '记录不存在');
+      }
+      
+      return successResponse(res.data[0]);
+    } catch (e) {
+      return errorResponse(500, `查询失败: ${e.message}`);
     }
+  },
+
+  async addMonthlyPlan(params) {
+    const { year_month, title } = params;
+    const uid = this.uniIdToken.uid;
+    
+    const validationError = validateRequiredParams({ year_month, title }, ['year_month', 'title']);
+    if (validationError) return validationError;
 
     try {
       const res = await db.collection('monthly_plans').add({
         user_id: uid,
         year_month,
         title,
-        goals,
-        status: status || 'planning',
+        goals: params.goals,
+        status: params.status || 'planning',
         create_time: Date.now(),
         update_time: Date.now()
       });
       
-      return {
-        errCode: 0,
-        data: res
-      };
+      return successResponse(res);
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `创建失败: ${e.message}`);
     }
   },
 
-  /**
-   * 获取月度计划详情
-   * @param {Object} params
-   * @param {String} params.id 计划ID
-   */
-  async getMonthlyPlanDetail(params) {
-    const { id } = params;
-    if (!id) return { errCode: 1, errMsg: 'ID不能为空' };
-    
-    try {
-      const res = await db.collection('monthly_plans').doc(id).get();
-      if (!res.data || res.data.length === 0) {
-        return { errCode: 404, errMsg: '记录不存在' };
-      }
-      
-      return {
-        errCode: 0,
-        data: res.data[0]
-      };
-    } catch (e) {
-      return { errCode: 500, errMsg: e.message };
-    }
-  },
-
-  /**
-   * 更新月度计划
-   * @param {Object} params
-   */
   async updateMonthlyPlan(params) {
-    const { id, goals, status, update_time } = params;
-    if (!id) return { errCode: 1, errMsg: 'ID不能为空' };
-    
+    const validationError = validateRequiredParams(params, ['id']);
+    if (validationError) return validationError;
+
+    const { error } = await verifyRecordOwnership('monthly_plans', params.id, this.uniIdToken.uid);
+    if (error) return error;
+
     try {
-      const data = { update_time: update_time || Date.now() };
-      if (goals) data.goals = goals;
-      if (status) data.status = status;
+      const data = { update_time: Date.now() };
+      if (params.goals) data.goals = params.goals;
+      if (params.status) data.status = params.status;
       
-      await db.collection('monthly_plans').doc(id).update(data);
-      return { errCode: 0, errMsg: 'success' };
+      await db.collection('monthly_plans').doc(params.id).update(data);
+      return successResponse();
     } catch (e) {
-      return { errCode: 500, errMsg: e.message };
+      return errorResponse(500, `更新失败: ${e.message}`);
     }
   },
 
-  /**
-   * 删除月度计划
-   * @param {Object} params
-   */
   async deleteMonthlyPlan(params) {
-    const { id } = params;
-    if (!id) return { errCode: 1, errMsg: 'ID不能为空' };
-    
+    const validationError = validateRequiredParams(params, ['id']);
+    if (validationError) return validationError;
+
+    const { error } = await verifyRecordOwnership('monthly_plans', params.id, this.uniIdToken.uid);
+    if (error) return error;
+
     try {
-      await db.collection('monthly_plans').doc(id).remove();
-      return { errCode: 0, errMsg: 'success' };
+      await db.collection('monthly_plans').doc(params.id).remove();
+      return successResponse();
     } catch (e) {
-      return { errCode: 500, errMsg: e.message };
+      return errorResponse(500, `删除失败: ${e.message}`);
     }
   },
 
-  /**
-   * 获取指定月份的打卡记录
-   * @param {Object} params
-   * @param {String} params.uid 用户ID
-   * @param {String} params.yearMonth 年月字符串 YYYY-MM
-   * @returns {Object} { errCode: 0, data: ["2026-02-01", "2026-02-05", ...] }
-   */
-  async getMonthlyCheckIns(params) {
-    const { uid, yearMonth } = params;
-    
-    if (!uid || !yearMonth) {
-      return {
-        errCode: 1,
-        errMsg: '参数不完整'
-      };
-    }
+  // ==================== 用户信息 ====================
+
+  async getUserInfo(params) {
+    const validationError = validateRequiredParams(params, ['uid']);
+    if (validationError) return validationError;
 
     try {
-      // 查询指定月份的所有打卡记录
-      const res = await db.collection('daily_tasks')
-        .where({
-          user_id: uid,
-          date: new db.RegExp({
-            regexp: `^${yearMonth}`,  // 匹配 YYYY-MM 开头的日期
-            options: 'i'
-          })
-        })
+      const res = await db.collection('uni-id-users')
+        .doc(params.uid)
         .field({
-          date: true
+          nickname: true,
+          avatar: true,
+          mobile: true,
+          realname: true,
+          gender: true,
+          birthday: true,
+          job: true,
+          dao_profile: true
         })
         .get();
       
-      // 提取日期字符串数组
-      const dates = res.data.map(item => item.date);
-      
-      return {
-        errCode: 0,
-        data: dates
-      };
+      return successResponse(res.data && res.data.length > 0 ? res.data[0] : null);
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `查询失败: ${e.message}`);
     }
   },
 
-  /**
-   * 检查指定日期是否已打卡（用于同步状态）
-   * @param {Object} params
-   * @param {String} params.uid 用户ID
-   * @param {String} params.date 日期字符串 YYYY-MM-DD
-   * @returns {Object} { errCode: 0, data: { hasChecked: true/false, date: "YYYY-MM-DD" } }
-   */
-  async checkDailyTaskStatus(params) {
-    const { uid, date } = params;
+  async updateUserInfo(params) {
+    const validationError = validateRequiredParams(params, ['uid', 'data']);
+    if (validationError) return validationError;
     
-    if (!uid || !date) {
-      return {
-        errCode: 1,
-        errMsg: '参数不完整'
-      };
+    // 权限验证：只能修改自己的信息
+    if (params.uid !== this.uniIdToken.uid) {
+      return errorResponse(403, '无权操作');
+    }
+    
+    // 白名单过滤：只允许修改安全字段
+    const allowedFields = ['nickname', 'avatar', 'realname', 'gender', 'birthday', 'job'];
+    const updateData = {};
+    
+    for (const field of allowedFields) {
+      if (params.data[field] !== undefined) {
+        updateData[field] = params.data[field];
+      }
+    }
+    
+    if (Object.keys(updateData).length === 0) {
+      return errorResponse(400, '没有可更新的字段');
     }
 
     try {
-      const res = await db.collection('daily_tasks')
-        .where({
-          user_id: uid,
-          date: date
-        })
-        .count();
-      
-      return {
-        errCode: 0,
-        data: {
-          hasChecked: res.total > 0,
-          date: date
-        }
-      };
+      await db.collection('uni-id-users').doc(params.uid).update(updateData);
+      return successResponse();
     } catch (e) {
-      return {
-        errCode: 500,
-        errMsg: e.message
-      };
+      return errorResponse(500, `更新失败: ${e.message}`);
     }
   }
 };

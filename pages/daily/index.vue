@@ -96,8 +96,10 @@
                 :class="{
                   'is-other-month': day.isOtherMonth,
                   'is-today': day.isToday,
-                  'is-checked': day.isChecked
+                  'is-checked': day.isChecked,
+                  'is-clickable': !day.isOtherMonth && day.isChecked
                 }"
+                @click="onDayClick(day)"
               >
                 <view class="day-number">{{ day.day }}</view>
                 <view v-if="day.isChecked && !day.isOtherMonth" class="check-dot"></view>
@@ -236,6 +238,20 @@
         const query = this.todayTask ? `?date=${this.todayStr}` : '';
         uni.navigateTo({
           url: `/pages/daily/check${query}`
+        });
+      },
+      onDayClick(day) {
+        // 只有已打卡的当月日期可以点击查看
+        if (day.isOtherMonth || !day.isChecked) {
+          return;
+        }
+        
+        // 构造日期字符串
+        const dateStr = `${this.currentYear}-${String(this.currentMonth).padStart(2,'0')}-${String(day.day).padStart(2,'0')}`;
+        
+        // 跳转到打卡页面查看/编辑
+        uni.navigateTo({
+          url: `/pages/daily/check?date=${dateStr}`
         });
       },
       isHasMindIssues(mind) {
@@ -703,6 +719,14 @@
         .day-number {
           color: $primary;
           font-weight: bold;
+        }
+      }
+      
+      &.is-clickable {
+        cursor: pointer;
+        
+        &:active {
+          opacity: 0.6;
         }
       }
     }

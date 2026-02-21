@@ -98,6 +98,8 @@
 </template>
 
 <script>
+  import { updateStoreUser } from '@/libs/auth.js'
+
   export default {
     data() {
       return {
@@ -173,11 +175,24 @@
                 const res = await waterApi.deleteDiary({ id: this.id });
                 
                 if (res.errCode === 0) {
+                  // 更新用户统计数据（扣减功德）
+                  const currentProfile = (this.$store.state.vuex_user && this.$store.state.vuex_user.dao_profile) || {};
+                  const meritToDeduct = this.diary.merit_points || 0;
+                  const newTotalMerit = Math.max(0, (currentProfile.total_merit || 0) - meritToDeduct);
+                  
+                  updateStoreUser({
+                    dao_profile: {
+                      total_merit: newTotalMerit,
+                      level: Math.floor(newTotalMerit / 1000) + 1
+                    }
+                  });
+                  
                   uni.hideLoading();
                   uni.showToast({ title: '已删除', icon: 'success' });
                   setTimeout(() => {
                     uni.navigateBack();
                   }, 1500);
+                  
                 } else {
                   throw new Error(res.errMsg);
                 }
