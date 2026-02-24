@@ -1,6 +1,6 @@
 const db = uniCloud.database();
 const dbCmd = db.command;
-const { errorResponse, successResponse, successResponseWithProfile } = require('./response-helpers');
+const { errorResponse, successResponse, successResponseWithProfile, successResponseWithPagination } = require('./response-helpers');
 
 // Token 缓存（使用云函数实例级缓存，避免频繁验证）
 const tokenCache = new Map();
@@ -205,10 +205,7 @@ module.exports = {
       // 如果有更多数据，去掉多查询的那一条
       const data = hasMore ? res.data.slice(0, pageSize) : res.data;
       
-      return successResponse({
-        data: data,
-        hasMore: hasMore
-      });
+      return successResponseWithPagination(data, hasMore);
     } catch (e) {
       return errorResponse(500, '查询失败，请稍后重试');
     }
@@ -448,10 +445,7 @@ module.exports = {
       // 如果有更多数据，去掉多查询的那一条
       const data = hasMore ? res.data.slice(0, pageSize) : res.data;
       
-      return successResponse({
-        data: data,
-        hasMore: hasMore
-      });
+      return successResponseWithPagination(data, hasMore);
     } catch (e) {
       return errorResponse(500, '查询失败，请稍后重试');
     }

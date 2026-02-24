@@ -89,6 +89,10 @@ export const updateStoreUser = (userInfo) => {
 			...userInfo.dao_profile,
 		};
 	}
+	// 修复：如果有 _id 或 uid，说明已登录，设置 isAnonymous 为 false
+	if (finalUser._id || finalUser.uid) {
+		finalUser.isAnonymous = false;
+	}
 
 	store.commit("$tStore", {
 		name: "vuex_user",

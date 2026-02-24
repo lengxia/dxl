@@ -24,8 +24,21 @@ function successResponseWithProfile(data, userProfile, errMsg = 'success') {
   };
 }
 
+/**
+ * 分页响应格式（统一处理列表数据和 hasMore）
+ */
+function successResponseWithPagination(data, hasMore, errMsg = 'success') {
+  return {
+    errCode: 0,
+    errMsg,
+    data,
+    hasMore
+  };
+}
+
 module.exports = {
   errorResponse,
   successResponse,
-  successResponseWithProfile
+  successResponseWithProfile,
+  successResponseWithPagination
 };
