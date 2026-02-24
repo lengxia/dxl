@@ -15,6 +15,16 @@ try {
 // 标记需要永久存储的变量，在每次启动时取出，在state中的变量名
 let saveStateKeys = ['vuex_user', 'vuex_last_daily_date']
 
+// 默认用户状态常量
+export const DEFAULT_USER = {
+  name: '道友',
+  nickname: '修行者',
+  isAnonymous: true,
+  avatar: '',
+  uid: null,
+  _id: null
+}
+
 // 保存变量到本地存储
 const saveLifeData = function(key, value) {
   // 判断变量是否在存储数组中
@@ -22,7 +32,7 @@ const saveLifeData = function(key, value) {
     // 获取本地存储的lifeData对象，将变量添加到对象中
     let tmpLifeData = uni.getStorageSync('lifeData')
     // 第一次启动时不存在，则放一个空对象
-    tmpLifeData = tmpLifeData ? tmpLifeData : {},
+    tmpLifeData = tmpLifeData ? tmpLifeData : {}
     tmpLifeData[key] = value
     // 将变量再次放回本地存储中
     uni.setStorageSync('lifeData', tmpLifeData)
@@ -33,7 +43,7 @@ const store = new Vuex.Store({
   state: {
     // 如果上面从本地获取的lifeData对象下有对应的属性，就赋值给state中对应的变量
     // 加上vuex_前缀，是防止变量名冲突，也让人一目了然
-    vuex_user: lifeData.vuex_user ? lifeData.vuex_user : {name: '道友', nickname: '修行者', isAnonymous: true},
+    vuex_user: lifeData.vuex_user ? lifeData.vuex_user : DEFAULT_USER,
     
     // 记录最后一次打卡的日期字符串 "YYYY-MM-DD"
     vuex_last_daily_date: lifeData.vuex_last_daily_date ? lifeData.vuex_last_daily_date : '',

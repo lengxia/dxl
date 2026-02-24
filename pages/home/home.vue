@@ -3,12 +3,11 @@
 		<!-- 顶部导航 -->
 		<tn-nav-bar fixed :isBack="false" :bottomShadow="false" :backgroundColor="navBackgroundColor">
 			<view slot="default" class="custom-nav-content">
-				<text class="title-text" :style="{opacity: navOpacity}">道心录</text>
+				<text class="title-text" :style="{ opacity: navOpacity }">道心录</text>
 			</view>
 		</tn-nav-bar>
 
-		<view class="page-content" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
-
+		<view class="page-content" :style="{ paddingTop: vuex_custom_bar_height + 'px' }">
 			<!-- 头部问候区域 -->
 			<view class="greeting-section">
 				<view class="greeting-bg"></view>
@@ -37,12 +36,18 @@
 			<view class="stats-section">
 				<view class="stats-card">
 					<view class="stat-item" @click="tn('/pages/daily/index')">
-						<view class="stat-value primary">{{ stats.days }}</view>
+						<view class="stat-value primary">
+							<tn-count-to :startVal="0" :endVal="stats.days" bold fontSize=48
+								fontColor=$primary></tn-count-to>
+						</view>
 						<view class="stat-label">修行天数</view>
 					</view>
 					<view class="stat-divider"></view>
 					<view class="stat-item" @click="tn('/pages/diary/index')">
-						<view class="stat-value accent">{{ stats.merit }}</view>
+						<view class="stat-value accent">
+							<tn-count-to :startVal="0" :endVal="stats.merit" bold fontSize=48
+								fontColor=accent></tn-count-to>
+						</view>
 						<view class="stat-label">累计功德</view>
 					</view>
 					<view class="stat-divider"></view>
@@ -148,68 +153,69 @@
 					<view class="wisdom-author">-- 道心录</view>
 				</view>
 			</view>
-
 		</view>
 
-		<view class='tn-tabbar-height'></view>
+		<view class="tn-tabbar-height"></view>
 	</view>
 </template>
 
 <script>
+	import pageMixin from "@/libs/page-mixin";
 	import {
-		checkLogin,
-		loginByWeixin,
-		syncUserInfo,
-		updateUserProfile
-	} from '@/libs/auth'
-
-	const LEVEL_NAMES = ['初入道门', '筑基初成', '开光境界', '融合之境', '心动大成', '金丹圆满'];
+		LEVEL_NAMES
+	} from "@/common/constants";
+	import {
+		getTodayStr,
+		getCurrentHour,
+		getCurrentMonth,
+		getCurrentDate,
+	} from "@/libs/date-utils.js";
 
 	export default {
-		name: 'Home',
+		name: "Home",
+		mixins: [pageMixin],
 		data() {
 			return {
-				greeting: '道友,早安',
-				dailyQuote: '上善若水,水善利万物而不争。',
+				greeting: "道友,早安",
+				dailyQuote: "上善若水,水善利万物而不争。",
 				isTodayChecked: false,
 				navOpacity: 0.6,
-				userAvatar: '',
+				userAvatar: "",
 				stats: {
 					days: 0,
 					merit: 0,
 					level: 1,
-					level_name: LEVEL_NAMES[0]
-				}
-			}
+					level_name: LEVEL_NAMES[0],
+				},
+			};
 		},
 		computed: {
 			vuexUser() {
 				return this.$store.state.vuex_user || {};
 			},
 			LastDailyDate() {
-				return this.$store.state.vuex_last_daily_date || '';
+				return this.$store.state.vuex_last_daily_date || "";
 			},
 			navBackgroundColor() {
-				return `rgba(255, 254, 251, ${this.navOpacity})`
+				return `rgba(255, 254, 251, ${this.navOpacity})`;
 			},
 			todayDate() {
-				const now = new Date();
-				const month = now.getMonth() + 1;
-				const day = now.getDate();
-				const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
-				const weekDay = weekDays[now.getDay()];
+				const month = getCurrentMonth();
+				const day = getCurrentDate();
+				const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
+				const weekDay = weekDays[new Date().getDay()];
 				return `${month}月${day}日 星期${weekDay}`;
 			},
 		},
 		onPageScroll(e) {
-			const top = e.scrollTop
-			const threshold = 80
+			const top = e.scrollTop;
+			const threshold = 80;
 			if (top <= 0) {
-				this.navOpacity = 0.6
+				this.navOpacity = 0.6;
 			} else if (top < threshold) {
-				this.navOpacity = 0.6 + (top / threshold) * 0.4
+				this.navOpacity = 0.6 + (top / threshold) * 0.4;
 			} else {
-				this.navOpacity = 1
+				this.navOpacity = 1;
 			}
 		},
 		watch: {
@@ -220,20 +226,19 @@
 					this.loadUserInfo(newVal || {});
 				},
 				deep: true,
-				immediate: true
+				immediate: true,
 			},
 			// 监听新的日期状态变化
 			LastDailyDate: {
 				handler(newVal) {
 					this.checkDailyCheckIn(newVal);
 				},
-				immediate: true
-			}
+				immediate: true,
+			},
 		},
 		created() {
 			this.setGreeting();
 		},
-		onShow() {},
 		methods: {
 			// 供父组件调用的显示生命周期
 			componentShow() {
@@ -243,31 +248,30 @@
 			},
 			tn(url) {
 				uni.navigateTo({
-					url
+					url,
 				});
 			},
 			setGreeting() {
-				const hour = new Date().getHours();
-				if (hour < 6) this.greeting = '夜深了，注意休息';
-				else if (hour < 9) this.greeting = '道友，早安';
-				else if (hour < 12) this.greeting = '上午好，精进修行';
-				else if (hour < 14) this.greeting = '午安，小憩养神';
-				else if (hour < 18) this.greeting = '下午好';
-				else this.greeting = '晚上好，静心反省';
+				const hour = getCurrentHour();
+				if (hour < 6) this.greeting = "夜深了，注意休息";
+				else if (hour < 9) this.greeting = "道友，早安";
+				else if (hour < 12) this.greeting = "上午好，精进修行";
+				else if (hour < 14) this.greeting = "午安，小憩养神";
+				else if (hour < 18) this.greeting = "下午好";
+				else this.greeting = "晚上好，静心反省";
 			},
 			// 检查今日打卡状态
 			async checkDailyCheckIn(val) {
-				const isLogin = checkLogin();
-				if (!isLogin) {
+				// 使用 mixin 提供的响应式 isLogin 属性
+				if (!this.isLogin) {
 					this.isTodayChecked = false;
 					return;
 				}
-				
+
 				// 如果 val 是日期字符串，检查是否是今天
-				if (typeof val === 'string' && val.indexOf('-') > -1) {
-					const now = new Date();
-					const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-					this.isTodayChecked = (val === todayStr);
+				if (typeof val === "string" && val.indexOf("-") > -1) {
+					const todayStr = getTodayStr();
+					this.isTodayChecked = val === todayStr;
 				} else {
 					// 默认 false
 					this.isTodayChecked = false;
@@ -275,7 +279,7 @@
 				return;
 			},
 			loadUserInfo(user) {
-				this.userAvatar = user.avatar || '';
+				this.userAvatar = user.avatar || "";
 
 				// 处理修行数据
 				if (user.dao_profile) {
@@ -283,7 +287,9 @@
 					this.stats.merit = user.dao_profile.total_merit || 0;
 					const level = user.dao_profile.level || 1;
 					this.stats.level = level;
-					this.stats.level_name = LEVEL_NAMES[Math.min(level - 1, LEVEL_NAMES.length - 1)] || LEVEL_NAMES[0];
+					this.stats.level_name =
+						LEVEL_NAMES[Math.min(level - 1, LEVEL_NAMES.length - 1)] ||
+						LEVEL_NAMES[0];
 				} else {
 					// 重置或默认值
 					this.stats.days = 0;
@@ -291,23 +297,23 @@
 					this.stats.level = 1;
 					this.stats.level_name = LEVEL_NAMES[0];
 				}
-			}
-		}
-	}
+			},
+		},
+	};
 </script>
 
 <style lang="scss" scoped>
 	// 道心录配色
-	$primary: #3D8B8F;
-	$primary-light: #5AABAD;
-	$accent: #C9A86C;
-	$accent-light: #E8D4A8;
-	$warm: #E07A5F;
-	$bg: #F7F5F0;
-	$card-bg: #FFFEFB;
-	$text: #2D3436;
-	$text-secondary: #636E72;
-	$text-hint: #B2BEC3;
+	$primary: #3d8b8f;
+	$primary-light: #5aabad;
+	$accent: #c9a86c;
+	$accent-light: #e8d4a8;
+	$warm: #e07a5f;
+	$bg: #f7f5f0;
+	$card-bg: #fffefb;
+	$text: #2d3436;
+	$text-secondary: #636e72;
+	$text-hint: #b2bec3;
 
 	.home-page {
 		min-height: 100vh;
@@ -373,7 +379,7 @@
 		.greeting-text {
 			font-size: 44rpx;
 			font-weight: bold;
-			color: #FFFFFF;
+			color: #ffffff;
 			margin-bottom: 10rpx;
 		}
 
@@ -414,7 +420,7 @@
 			margin-bottom: 20rpx;
 
 			text {
-				color: #FFFFFF;
+				color: #ffffff;
 				font-size: 32rpx;
 			}
 		}
@@ -473,13 +479,13 @@
 	.stat-divider {
 		width: 1rpx;
 		height: 60rpx;
-		background: #EEEEEE;
+		background: #eeeeee;
 	}
 
 	// 提醒卡片
 	.reminder-card {
 		margin: 0 30rpx 30rpx;
-		background: linear-gradient(135deg, $accent, #D4B87A);
+		background: linear-gradient(135deg, $accent, #d4b87a);
 		border-radius: 20rpx;
 		padding: 30rpx;
 		display: flex;
@@ -503,7 +509,7 @@
 			margin-right: 24rpx;
 
 			text {
-				color: #FFFFFF;
+				color: #ffffff;
 				font-size: 36rpx;
 			}
 		}
@@ -512,7 +518,7 @@
 			.reminder-title {
 				font-size: 30rpx;
 				font-weight: bold;
-				color: #FFFFFF;
+				color: #ffffff;
 				margin-bottom: 6rpx;
 			}
 
@@ -587,7 +593,7 @@
 
 		text {
 			font-size: 44rpx;
-			color: #FFFFFF;
+			color: #ffffff;
 		}
 
 		&.icon-daily {
@@ -595,15 +601,15 @@
 		}
 
 		&.icon-diary {
-			background: linear-gradient(135deg, $accent, #D4B87A);
+			background: linear-gradient(135deg, $accent, #d4b87a);
 		}
 
 		&.icon-plan {
-			background: linear-gradient(135deg, $warm, #F09A7F);
+			background: linear-gradient(135deg, $warm, #f09a7f);
 		}
 
 		&.icon-notes {
-			background: linear-gradient(135deg, #7B68EE, #9B8AFF);
+			background: linear-gradient(135deg, #7b68ee, #9b8aff);
 		}
 	}
 

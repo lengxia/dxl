@@ -1,24 +1,40 @@
 const db = uniCloud.database();
 const dbCmd = db.command;
+const { errorResponse, successResponse, successResponseWithProfile } = require('./response-helpers');
 
 // Token 缓存（使用云函数实例级缓存，避免频繁验证）
 const tokenCache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 缓存 5 分钟
 
+// 定期清理过期 Token 缓存（每10分钟）
+setInterval(() => {
+  const now = Date.now();
+  let cleanedCount = 0;
+  tokenCache.forEach((value, key) => {
+    if (now - value.timestamp >= CACHE_DURATION) {
+      tokenCache.delete(key);
+      cleanedCount++;
+    }
+  });
+  if (cleanedCount > 0) {
+    console.log(`[TokenCache] 清理了 ${cleanedCount} 个过期缓存`);
+  }
+}, 10 * 60 * 1000);
+
 // ==================== 工具函数 ====================
 
 /**
- * 统一错误响应格式
+ * HTML 转义（防止 XSS 攻击）
  */
-function errorResponse(errCode, errMsg) {
-  return { errCode, errMsg };
-}
-
-/**
- * 统一成功响应格式
- */
-function successResponse(data = null, errMsg = 'success') {
-  return { errCode: 0, errMsg, data };
+function escapeHtml(str) {
+  if (typeof str !== 'string') return str;
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
 }
 
 /**
@@ -71,6 +87,23 @@ async function updateUserMerit(userId, meritChange) {
   } catch (e) {
     console.error('更新用户功德失败:', e);
   }
+}
+
+/**
+ * 获取最新的用户 dao_profile（写操作后返回）
+ */
+async function getLatestUserProfile(userId) {
+  if (!userId) return null;
+  
+  try {
+    const userRes = await db.collection('uni-id-users').doc(userId).get();
+    if (userRes.data && userRes.data.length > 0) {
+      return userRes.data[0].dao_profile || null;
+    }
+  } catch (e) {
+    console.error('获取用户数据失败:', e);
+  }
+  return null;
 }
 
 // ==================== 主模块 ====================
@@ -140,7 +173,7 @@ module.exports = {
       
       return successResponse(note);
     } catch (e) {
-      return errorResponse(500, `查询失败: ${e.message}`);
+      return errorResponse(500, '查询失败，请稍后重试');
     }
   },
 
@@ -154,14 +187,30 @@ module.exports = {
     }
     
     try {
+      const page = params.page || 1;
+      const pageSize = params.pageSize || 10;
+      const skip = (page - 1) * pageSize;
+      
+      // 获取分页数据（多查询1条用于判断是否还有下一页）
       const res = await db.collection('dao_notes')
         .where({ user_id: params.uid })
         .orderBy('create_time', 'desc')
+        .skip(skip)
+        .limit(pageSize + 1)
         .get();
       
-      return successResponse(res.data);
+      // 判断是否还有更多数据
+      const hasMore = res.data.length > pageSize;
+      
+      // 如果有更多数据，去掉多查询的那一条
+      const data = hasMore ? res.data.slice(0, pageSize) : res.data;
+      
+      return successResponse({
+        data: data,
+        hasMore: hasMore
+      });
     } catch (e) {
-      return errorResponse(500, `查询失败: ${e.message}`);
+      return errorResponse(500, '查询失败，请稍后重试');
     }
   },
 
@@ -175,8 +224,8 @@ module.exports = {
     try {
       const res = await db.collection('dao_notes').add({
         user_id: uid,
-        title,
-        content,
+        title: escapeHtml(title),
+        content: escapeHtml(content),
         mood,
         tags,
         images,
@@ -187,7 +236,7 @@ module.exports = {
       
       return successResponse(res);
     } catch (e) {
-      return errorResponse(500, `创建失败: ${e.message}`);
+      return errorResponse(500, '创建失败，请稍后重试');
     }
   },
 
@@ -202,8 +251,8 @@ module.exports = {
       const { id, title, content, mood, tags, images, is_private } = params;
       const updateData = { update_time: Date.now() };
       
-      if (title !== undefined) updateData.title = title;
-      if (content !== undefined) updateData.content = content;
+      if (title !== undefined) updateData.title = escapeHtml(title);
+      if (content !== undefined) updateData.content = escapeHtml(content);
       if (mood !== undefined) updateData.mood = mood;
       if (tags !== undefined) updateData.tags = tags;
       if (images !== undefined) updateData.images = images;
@@ -212,7 +261,7 @@ module.exports = {
       await db.collection('dao_notes').doc(id).update(updateData);
       return successResponse();
     } catch (e) {
-      return errorResponse(500, `更新失败: ${e.message}`);
+      return errorResponse(500, '更新失败，请稍后重试');
     }
   },
 
@@ -227,7 +276,7 @@ module.exports = {
       await db.collection('dao_notes').doc(params.id).remove();
       return successResponse();
     } catch (e) {
-      return errorResponse(500, `删除失败: ${e.message}`);
+      return errorResponse(500, '删除失败，请稍后重试');
     }
   },
 
@@ -248,29 +297,34 @@ module.exports = {
       
       return successResponse(res.data && res.data.length > 0 ? res.data[0] : null);
     } catch (e) {
-      return errorResponse(500, `查询失败: ${e.message}`);
+      return errorResponse(500, '查询失败，请稍后重试');
     }
   },
 
   async checkTodayTask(params) {
     const validationError = validateRequiredParams(params, ['date', 'user_id']);
     if (validationError) return validationError;
-    
+
+    // 权限验证：只能查询自己的任务
+    if (params.user_id !== this.uniIdToken.uid) {
+      return errorResponse(403, '无权查询他人任务');
+    }
+
     try {
       const res = await db.collection('daily_tasks')
         .where({ date: params.date, user_id: params.user_id })
         .count();
-      
+
       return successResponse({ total: res.total });
     } catch (e) {
-      return errorResponse(500, `查询失败: ${e.message}`);
+      return errorResponse(500, '查询失败，请稍后重试');
     }
   },
 
   async submitDailyTask(params) {
     const validationError = validateRequiredParams(params, ['date', 'user_id']);
     if (validationError) return validationError;
-    
+
     // 权限验证：只能为自己提交
     if (params.user_id !== this.uniIdToken.uid) {
       return errorResponse(403, '无权操作');
@@ -280,19 +334,23 @@ module.exports = {
       const checkRes = await db.collection('daily_tasks')
         .where({ date: params.date, user_id: params.user_id })
         .get();
-      
+
       const isNewTask = !checkRes.data || checkRes.data.length === 0;
-      
+      let userProfile = null;
+
       if (isNewTask) {
         await db.collection('daily_tasks').add(params);
-        
-        // 更新连续打卡天数
+
+        // 更新连续打卡天数，并复用查询结果
         const userRes = await db.collection('uni-id-users').doc(params.user_id).get();
         if (userRes.data && userRes.data.length > 0) {
-          const currentProfile = userRes.data[0].dao_profile || {};
+          userProfile = userRes.data[0].dao_profile || {};
+          const newContinuousDays = (userProfile.continuous_days || 0) + 1;
           await db.collection('uni-id-users').doc(params.user_id).update({
-            'dao_profile.continuous_days': (currentProfile.continuous_days || 0) + 1
+            'dao_profile.continuous_days': newContinuousDays
           });
+          // 更新本地变量，避免重复查询
+          userProfile.continuous_days = newContinuousDays;
         }
       } else {
         const id = checkRes.data[0]._id;
@@ -302,10 +360,14 @@ module.exports = {
           update_time: Date.now()
         });
       }
-      
-      return successResponse();
+
+      // 如果没有在新建任务中获取用户数据，则查询一次
+      if (!userProfile) {
+        userProfile = await getLatestUserProfile(params.user_id);
+      }
+      return successResponseWithProfile(null, userProfile);
     } catch (e) {
-      return errorResponse(500, `提交失败: ${e.message}`);
+      return errorResponse(500, '提交失败，请稍后重试');
     }
   },
 
@@ -313,11 +375,16 @@ module.exports = {
     const validationError = validateRequiredParams(params, ['uid', 'yearMonth']);
     if (validationError) return validationError;
 
+    // 权限验证：只能查询自己的打卡记录
+    if (params.uid !== this.uniIdToken.uid) {
+      return errorResponse(403, '无权查询他人打卡记录');
+    }
+
     try {
       // 构造日期范围（性能优化：使用范围查询替代正则）
       const startDate = `${params.yearMonth}-01`;
       const endDate = `${params.yearMonth}-31`;
-      
+
       const res = await db.collection('daily_tasks')
         .where({
           user_id: params.uid,
@@ -325,11 +392,11 @@ module.exports = {
         })
         .field({ date: true })
         .get();
-      
+
       const dates = res.data.map(item => item.date);
       return successResponse(dates);
     } catch (e) {
-      return errorResponse(500, `查询失败: ${e.message}`);
+      return errorResponse(500, '查询失败，请稍后重试');
     }
   },
 
@@ -347,7 +414,7 @@ module.exports = {
         date: params.date
       });
     } catch (e) {
-      return errorResponse(500, `查询失败: ${e.message}`);
+      return errorResponse(500, '查询失败，请稍后重试');
     }
   },
 
@@ -363,14 +430,30 @@ module.exports = {
     }
 
     try {
+      const page = params.page || 1;
+      const pageSize = params.pageSize || 10;
+      const skip = (page - 1) * pageSize;
+      
+      // 获取分页数据（多查询1条用于判断是否还有下一页）
       const res = await db.collection('good_deeds')
         .where({ user_id: params.uid })
         .orderBy('date', 'desc')
+        .skip(skip)
+        .limit(pageSize + 1)
         .get();
       
-      return successResponse(res.data);
+      // 判断是否还有更多数据
+      const hasMore = res.data.length > pageSize;
+      
+      // 如果有更多数据，去掉多查询的那一条
+      const data = hasMore ? res.data.slice(0, pageSize) : res.data;
+      
+      return successResponse({
+        data: data,
+        hasMore: hasMore
+      });
     } catch (e) {
-      return errorResponse(500, `查询失败: ${e.message}`);
+      return errorResponse(500, '查询失败，请稍后重试');
     }
   },
 
@@ -386,7 +469,7 @@ module.exports = {
       
       return successResponse(res.data[0]);
     } catch (e) {
-      return errorResponse(500, `查询失败: ${e.message}`);
+      return errorResponse(500, '查询失败，请稍后重试');
     }
   },
 
@@ -407,10 +490,10 @@ module.exports = {
         user_id: uid,
         date,
         deed_type,
-        title,
-        content: params.content,
-        intention: params.intention,
-        feeling: params.feeling,
+        title: escapeHtml(title),
+        content: escapeHtml(params.content),
+        intention: escapeHtml(params.intention),
+        feeling: escapeHtml(params.feeling),
         merit_points,
         is_public: params.is_public,
         create_time: Date.now(),
@@ -420,9 +503,11 @@ module.exports = {
       // 更新用户功德
       await updateUserMerit(uid, merit_points || 0);
       
-      return successResponse(res);
+      // 返回最新用户数据
+      const userProfile = await getLatestUserProfile(uid);
+      return successResponseWithProfile(res, userProfile);
     } catch (e) {
-      return errorResponse(500, `创建失败: ${e.message}`);
+      return errorResponse(500, '创建失败，请稍后重试');
     }
   },
 
@@ -453,10 +538,10 @@ module.exports = {
       
       if (date !== undefined) updateData.date = date;
       if (deed_type !== undefined) updateData.deed_type = deed_type;
-      if (title !== undefined) updateData.title = title;
-      if (content !== undefined) updateData.content = content;
-      if (intention !== undefined) updateData.intention = intention;
-      if (feeling !== undefined) updateData.feeling = feeling;
+      if (title !== undefined) updateData.title = escapeHtml(title);
+      if (content !== undefined) updateData.content = escapeHtml(content);
+      if (intention !== undefined) updateData.intention = escapeHtml(intention);
+      if (feeling !== undefined) updateData.feeling = escapeHtml(feeling);
       if (merit_points !== undefined) updateData.merit_points = merit_points;
       if (is_public !== undefined) updateData.is_public = is_public;
       
@@ -468,9 +553,11 @@ module.exports = {
         await updateUserMerit(oldDiary.user_id, meritDiff);
       }
       
-      return successResponse();
+      // 返回最新用户数据
+      const userProfile = await getLatestUserProfile(oldDiary.user_id);
+      return successResponseWithProfile(null, userProfile);
     } catch (e) {
-      return errorResponse(500, `更新失败: ${e.message}`);
+      return errorResponse(500, '更新失败，请稍后重试');
     }
   },
 
@@ -478,22 +565,21 @@ module.exports = {
     const validationError = validateRequiredParams(params, ['id']);
     if (validationError) return validationError;
 
+    // 修复安全漏洞：添加所有权校验
+    const { error, data: diary } = await verifyRecordOwnership('good_deeds', params.id, this.uniIdToken.uid);
+    if (error) return error;
+
     try {
-      const record = await db.collection('good_deeds').doc(params.id).get();
-      if (!record.data || record.data.length === 0) {
-        return errorResponse(404, '记录不存在');
-      }
-      
-      const diary = record.data[0];
-      
       await db.collection('good_deeds').doc(params.id).remove();
       
       // 扣减功德
       await updateUserMerit(diary.user_id, -(diary.merit_points || 0));
       
-      return successResponse();
+      // 返回最新用户数据
+      const userProfile = await getLatestUserProfile(diary.user_id);
+      return successResponseWithProfile(null, userProfile);
     } catch (e) {
-      return errorResponse(500, `删除失败: ${e.message}`);
+      return errorResponse(500, '删除失败，请稍后重试');
     }
   },
 
@@ -510,7 +596,7 @@ module.exports = {
       
       return successResponse(res.data);
     } catch (e) {
-      return errorResponse(500, `查询失败: ${e.message}`);
+      return errorResponse(500, '查询失败，请稍后重试');
     }
   },
 
@@ -526,7 +612,7 @@ module.exports = {
       
       return successResponse(res.data[0]);
     } catch (e) {
-      return errorResponse(500, `查询失败: ${e.message}`);
+      return errorResponse(500, '查询失败，请稍后重试');
     }
   },
 
@@ -541,7 +627,7 @@ module.exports = {
       const res = await db.collection('monthly_plans').add({
         user_id: uid,
         year_month,
-        title,
+        title: escapeHtml(title),
         goals: params.goals,
         status: params.status || 'planning',
         create_time: Date.now(),
@@ -550,7 +636,7 @@ module.exports = {
       
       return successResponse(res);
     } catch (e) {
-      return errorResponse(500, `创建失败: ${e.message}`);
+      return errorResponse(500, '创建失败，请稍后重试');
     }
   },
 
@@ -569,7 +655,7 @@ module.exports = {
       await db.collection('monthly_plans').doc(params.id).update(data);
       return successResponse();
     } catch (e) {
-      return errorResponse(500, `更新失败: ${e.message}`);
+      return errorResponse(500, '更新失败，请稍后重试');
     }
   },
 
@@ -584,7 +670,7 @@ module.exports = {
       await db.collection('monthly_plans').doc(params.id).remove();
       return successResponse();
     } catch (e) {
-      return errorResponse(500, `删除失败: ${e.message}`);
+      return errorResponse(500, '删除失败，请稍后重试');
     }
   },
 
@@ -611,7 +697,7 @@ module.exports = {
       
       return successResponse(res.data && res.data.length > 0 ? res.data[0] : null);
     } catch (e) {
-      return errorResponse(500, `查询失败: ${e.message}`);
+      return errorResponse(500, '查询失败，请稍后重试');
     }
   },
 
@@ -640,9 +726,12 @@ module.exports = {
 
     try {
       await db.collection('uni-id-users').doc(params.uid).update(updateData);
-      return successResponse();
+      
+      // 返回最新用户数据
+      const userProfile = await getLatestUserProfile(params.uid);
+      return successResponseWithProfile(null, userProfile);
     } catch (e) {
-      return errorResponse(500, `更新失败: ${e.message}`);
+      return errorResponse(500, '更新失败，请稍后重试');
     }
   }
 };

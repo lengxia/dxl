@@ -2,6 +2,7 @@
 	import Vue from "vue";
 	import store from "./store/index.js";
 	import updateCustomBarInfo from "./tuniao-ui/libs/function/updateCustomBarInfo.js";
+	import { checkLogin, getCurrentUid, syncUserInfo, syncUserExpendsInfo } from "@/libs/auth";
 
 	export default {
 		onLaunch: function() {
@@ -42,6 +43,8 @@
 					name: "vuex_custom_bar_height",
 					value: res.customBarHeight,
 				});
+			}).catch((err) => {
+				console.error("获取状态栏信息失败:", err);
 			});
 
 			// #ifdef MP-WEIXIN
@@ -89,7 +92,17 @@
 			// #endif
 		},
 		onShow: function() {
-			// App Show
+			// App Show - 每次切回前台时，静默同步用户数据
+			if (checkLogin()) {
+				const uid = getCurrentUid();
+				if (uid) {
+					// 延迟执行，不阻塞 UI 渲染
+					setTimeout(() => {
+						syncUserInfo(uid);
+						syncUserExpendsInfo();
+					}, 500);
+				}
+			}
 		},
 		onHide: function() {
 			// App Hide

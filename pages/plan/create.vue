@@ -150,17 +150,19 @@
 </template>
 
 <script>
+  import formPageMixin from '@/libs/form-page-mixin'
+
   export default {
+    mixins: [formPageMixin],
+    
     data() {
       return {
-        editMode: false, // 是否为编辑模式
-        editId: '', // 编辑的记录ID
         showTimePicker: false,
         categories: [
-          { name: '修身', icon: 'tn-icon-heart', class: 'cate-body' },
+          { name: '修身', icon: 'tn-icon-sport-jog', class: 'cate-body' },
           { name: '修心', icon: 'tn-icon-flower', class: 'cate-mind' },
-          { name: '处世', icon: 'tn-icon-peoples', class: 'cate-social' },
-          { name: '治业', icon: 'tn-icon-work', class: 'cate-work' }
+          { name: '处世', icon: 'tn-icon-team', class: 'cate-social' },
+          { name: '治业', icon: 'tn-icon-computer', class: 'cate-work' }
         ],
         form: {
           year_month: '',
@@ -176,48 +178,52 @@
         }
       }
     },
-    onLoad(options) {
-      // 如果传入了 id 参数，说明是编辑模式
-      if (options.id) {
-        this.editMode = true;
-        this.editId = options.id;
-        this.loadExistingData(options.id);
-      }
-    },
-    onReady() {
-      this.$refs.planForm.setRules(this.rules);
-    },
     methods: {
       goBack() {
         uni.navigateBack();
       },
-      // 加载已有的计划数据（编辑模式）
-      async loadExistingData(id) {
-        uni.showLoading({ title: '加载中...' });
+      /**
+       * 加载表单数据
+       */
+      async loadFormData(id) {
+        const res = await this.$api.call('getMonthlyPlanDetail',
+          { id },
+          { showLoading: true, loadingText: '加载中...' }
+        )
         
-        try {
-          const waterApi = uniCloud.importObject('water-api', { customUI: true });
-          const res = await waterApi.getMonthlyPlanDetail({ id });
-          
-          if (res.errCode === 0 && res.data) {
-            const data = res.data;
-            
-            // 回显数据到表单
-            this.form = {
-              year_month: data.year_month || '',
-              title: data.title || '',
-              goals: data.goals || [{ category: '修身', content: '', target_days: 15, completed_days: 0 }],
-              status: data.status || 'planning'
-            };
-            
-            uni.hideLoading();
-          } else {
-            throw new Error(res.errMsg || '加载失败');
+        if (res.success && res.data) {
+          const data = res.data
+          this.form = {
+            year_month: data.year_month || '',
+            title: data.title || '',
+            goals: data.goals || [{ category: '修身', content: '', target_days: 15, completed_days: 0 }],
+            status: data.status || 'planning'
           }
-        } catch (e) {
-          uni.hideLoading();
-          uni.showToast({ title: '加载失败', icon: 'none' });
         }
+      },
+      /**
+       * 获取API方法名
+       */
+      getApiMethods() {
+        return {
+          add: 'addMonthlyPlan',
+          update: 'updateMonthlyPlan'
+        };
+      },
+      /**
+       * 处理表单数据
+       */
+      processFormData(formData) {
+        if (this.editMode) {
+          return {
+            year_month: formData.year_month,
+            title: formData.title,
+            goals: formData.goals,
+            status: formData.status,
+            update_time: Date.now()
+          };
+        }
+        return formData;
       },
       onTimeConfirm(e) {
         this.form.year_month = `${e.year}-${String(e.month).padStart(2, '0')}`;
@@ -240,66 +246,30 @@
         this.form.goals.splice(index, 1);
       },
       selectCategory(goalIndex, category) {
-        // 使用 $set 确保响应式更新
         this.$set(this.form.goals[goalIndex], 'category', category);
       },
+      /**
+       * 提交表单
+       */
       async submit() {
         if (!this.form.year_month) {
-          uni.showToast({ title: '请选择月份', icon: 'none' });
-          return;
+          uni.showToast({ title: '请选择月份', icon: 'none' })
+          return
         }
         if (!this.form.title) {
-          uni.showToast({ title: '请输入标题', icon: 'none' });
-          return;
+          uni.showToast({ title: '请输入标题', icon: 'none' })
+          return
         }
         
         // 校验 goals
         for (let g of this.form.goals) {
           if (!g.content) {
-            uni.showToast({ title: '请填写目标内容', icon: 'none' });
-            return;
+            uni.showToast({ title: '请填写目标内容', icon: 'none' })
+            return
           }
         }
-
-        uni.showLoading({ title: '保存中' });
         
-        try {
-          const waterApi = uniCloud.importObject('water-api', { customUI: true });
-          let res;
-          
-          if (this.editMode) {
-            // 编辑模式：调用更新接口
-            const data = {
-              id: this.editId,
-              year_month: this.form.year_month,
-              title: this.form.title,
-              goals: this.form.goals,
-              status: this.form.status,
-              update_time: Date.now()
-            };
-            res = await waterApi.updateMonthlyPlan(data);
-          } else {
-            // 新建模式：调用添加接口
-            const data = {
-              ...this.form,
-              user_id: uniCloud.getCurrentUserInfo().uid || uni.getStorageSync('uni_id_user_uid')
-            };
-            res = await waterApi.addMonthlyPlan(data);
-          }
-          
-          if (res.errCode === 0) {
-            uni.hideLoading();
-            uni.showToast({ title: this.editMode ? '修改成功' : '创建成功', icon: 'success' });
-            setTimeout(() => {
-              uni.navigateBack();
-            }, 1500);
-          } else {
-            throw new Error(res.errMsg);
-          }
-        } catch (e) {
-          uni.hideLoading();
-          uni.showToast({ title: this.editMode ? '修改失败' : '保存失败', icon: 'none' });
-        }
+        await this.submitForm();
       }
     }
   }

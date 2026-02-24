@@ -197,10 +197,11 @@
 </template>
 
 <script>
-  import { checkLogin, updateUserProfile } from '@/libs/auth'
+  import pageMixin from '@/libs/page-mixin'
 
   export default {
     name: 'Settings',
+    mixins: [pageMixin],
     data(){
       return {
         // 弹窗控制
@@ -217,9 +218,6 @@
         jobIndex: 0,
         birthday: '2000-01-01',
       }
-    },
-    onShow() {
-      this.initData();
     },
     computed: {
       startDate() { return this.getDate('start'); },
@@ -251,9 +249,6 @@
       }
     },
     methods: {
-      async initData() {
-        await checkLogin().catch(() => {});
-      },
       goBack() {
         // 统一返回逻辑
         const pages = getCurrentPages();
@@ -285,24 +280,28 @@
         });
       },
 
-      // 上传头像
+      // 上传头像 - 使用 API Service 统一处理
       async uploadAvatar(filePath) {
         uni.showLoading({ title: '上传中...' });
         
         try {
-          // 内部辅助：上传文件到云存储
+          // 上传文件到云存储
           const result = await uniCloud.uploadFile({
             filePath: filePath,
             cloudPath: `avatar/${Date.now()}_${Math.random().toString(36).substr(2)}.jpg`
           });
           
-          // 使用 auth.js 统一接口更新头像
-          await updateUserProfile({
-            avatar: result.fileID
-          })
+          // 通过 API Service 更新头像（会自动同步到 Vuex）
+          const res = await this.$api.call('updateUserInfo', 
+            { uid: this.userInfo._id, data: { avatar: result.fileID } },
+            { showLoading: false, autoSyncUser: true }
+          );
           
           uni.hideLoading();
-          uni.showToast({ title: '头像更新成功', icon: 'success' });
+          
+          if (res.success) {
+            uni.showToast({ title: '头像更新成功', icon: 'success' });
+          }
         } catch(e) {
           uni.hideLoading();
           uni.showToast({ title: e.message || '上传失败', icon: 'none' });
@@ -334,16 +333,20 @@
       },
 
       async saveUserInfo(data) {
-        try {
-          await updateUserProfile(data);
-          uni.showToast({ title: '保存成功', icon: 'success' });
-        } catch(e) {
-          if (e.message === '未登录') {
-             uni.showToast({ title: '请先登录', icon: 'none' });
-          } else {
-             uni.showToast({ title: e.message || '保存失败', icon: 'none' });
+        // 使用 API Service 更新用户信息（会自动同步到 Vuex）
+        const res = await this.$api.call('updateUserInfo', 
+          { uid: this.userInfo._id, data },
+          {
+            showLoading: true,
+            loadingText: '保存中...',
+            autoSyncUser: true
           }
+        );
+        
+        if (res.success) {
+          uni.showToast({ title: '保存成功', icon: 'success' });
         }
+        // 错误已由 API Service 统一处理
       },
       
       bindPickerChange(e) {

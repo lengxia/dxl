@@ -42,13 +42,8 @@
 <script>
 	import Home from './home/home.vue'
 	import Mine from './mine/index.vue'
-	// 引入认证逻辑
-	import {
-		checkLogin,
-		syncUserInfo,
-		syncUserExpendsInfo,
-		logout
-	} from "@/libs/auth.js";
+	// 只需要导入 checkLogin 检查登录状态
+	import { checkLogin } from "@/libs/auth.js";
 
 	export default {
 		components: {
@@ -77,16 +72,12 @@
 			}
 		},
 	onLoad(options) {
-		// 执行登录检查
-		const res = checkLogin(); // 直接调用，得到布尔值
-		if (res === true) {
-				syncUserInfo();
-				syncUserExpendsInfo();
-			} else {
-				logout();
-			}
+		// 仅检查登录状态
+		// auth.js 的 setLoginInfo 已自动处理用户数据同步
+		// 无需手动调用 syncUserInfo 和 syncUserExpendsInfo
+		checkLogin();
 
-			const index = Number(options.index || 0)
+		const index = Number(options.index || 0)
 			// 根据底部tabbar菜单列表设置对应页面的加载情况
 			this.tabberPageLoadFlag = this.tabbarList.map((item, tabbar_index) => {
 				return index === tabbar_index
@@ -128,7 +119,7 @@
 				}
 				this.currentIndex = index
 
-				// this._triggerComponentShow(index)
+				this._triggerComponentShow(index)
 			},
 
 			// 触发组件onShow
