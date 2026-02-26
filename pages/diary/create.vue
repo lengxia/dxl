@@ -192,7 +192,8 @@
 				uni.navigateBack();
 			},
 			onDateChange(e) {
-				this.form.date = e.result;
+				console.log(e)
+				this.form.date = e.date;
 			},
 			onSliderChange(e) {
 				this.form.merit_points = e.detail.value;
